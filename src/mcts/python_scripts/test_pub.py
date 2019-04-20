@@ -36,7 +36,7 @@ def main():
     rospy.init_node('test', anonymous = True)
 
     # class instance
-    skeleton_instance = Test_Class()
+    test_instance = Test_Class()
 
     # create ros loop
     pub_rate = 10 # hertz
@@ -44,7 +44,7 @@ def main():
 
     while (not rospy.is_shutdown()):
         # pack something in a json object
-        skeleton_instance.test_publish()
+        test_instance.test_publish()
 
         # ros sleep (sleep to maintain loop rate)
         rate.sleep()

@@ -103,7 +103,7 @@ def select(node, exploration_const=1.0):
     :param exploration_const: The exploration constant in UCB formula
     :return: The action and the corresponding best child node
     """
-    max_val = -math.inf
+    max_val = -float('inf')
     max_actions = []
     for action, child in node.children.items():
         node_val = (child.tot_reward / child.num_samples
@@ -133,7 +133,7 @@ def expand(node):
     return node.add_child(action)
 
 
-def default_rollout_policy(state):
+def random_rollout_policy(state):
     # type: (AbstractState) -> float
     """ The default policy for simulation is to randomly (uniform distribution)
         select an action to update the state and repeat the simulation until
@@ -162,7 +162,7 @@ def backpropagate(node, reward=0.0):
 
 def execute_round(root, max_tree_depth=15,
                   tree_select_policy=select, tree_expand_policy=expand,
-                  rollout_policy=default_rollout_policy,
+                  rollout_policy=random_rollout_policy,
                   backpropagate_method=backpropagate):
     # type: (Node, int, callable, callable, callable, callable) -> None
     """ Perform selection, expansion, simulation and backpropagation with
@@ -199,7 +199,7 @@ def execute_round(root, max_tree_depth=15,
 class MonteCarloSearchTree:
     def __init__(self, initial_state, samples=1000, max_tree_depth=10,
                  tree_select_policy=select, tree_expand_policy=expand,
-                 rollout_policy=default_rollout_policy,
+                 rollout_policy=random_rollout_policy,
                  backpropagate_method=backpropagate):
         # type: (AbstractState, int, int, callable, callable, callable, callable) -> None
         """ Create a MonteCarloSearchTree object
@@ -242,7 +242,7 @@ class MonteCarloSearchTree:
         if not node.children or search_depth == 0:
             return node.tot_reward / node.num_samples, []
         elif search_depth == 1:
-            max_val = -math.inf
+            max_val = -float('inf')
             max_actions = []
             for action, child in node.children.items():
                 node_val = child.tot_reward / child.num_samples

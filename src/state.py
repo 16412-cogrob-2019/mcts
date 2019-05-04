@@ -1,14 +1,17 @@
-from abc import ABC
 import networkx as nx
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from abc import ABCMeta
+from copy import deepcopy
 
 
-class AbstractAction(ABC):
-    pass
+class AbstractAction:
+    __metaclass__ = ABCMeta
 
 
-class AbstractState(ABC):
+class AbstractState:
+    __metaclass__ = ABCMeta
+
     @property
     def reward(self):
         # type: () -> float
@@ -66,6 +69,13 @@ class KolumboAction(AbstractAction):
         # type: () -> float
         return self._time
 
+    def __str__(self):
+        # type: () -> str
+        return """Action: agent {0} move from location {1} to location{2}
+                    in time {3}""".format(
+            self._agent_id, self._start_location,
+            self._end_location, self._time)
+
 
 class KolumboState(AbstractState):
     def __init__(self, environment=nx.DiGraph(), time_remains=10.0):
@@ -93,9 +103,9 @@ class KolumboState(AbstractState):
         """
         new_state = KolumboState(environment=self._environment,
                                  time_remains=self._time_remains)
-        new_state._histories = self._histories.copy()
-        new_state._statuses = self._statuses.copy()
-        new_state._terminal_locations = self._terminal_locations.copy()
+        new_state._histories = deepcopy(self._histories)
+        new_state._statuses = deepcopy(self._statuses)
+        new_state._terminal_locations = deepcopy(self._terminal_locations)
         return new_state
 
     def add_location(self, location_id, reward, coord):
@@ -320,8 +330,7 @@ class KolumboState(AbstractState):
         start_loc = self._statuses[self._agent_id][0]
         return [KolumboAction(self._agent_id, start_loc, path[1],
                               self.cost_at_path(*path))
-                for path in self.outgoing_paths(start_loc)
-                if self.cost_at_path(*path) <= self._time_remains]
+                for path in self.outgoing_paths(start_loc)]
 
     def execute_action(self, action):
         # type: (KolumboAction) -> KolumboState
@@ -336,19 +345,13 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self):
-        # type: () -> Figure
+    def visualize(self, figsize=(10, 10)):
+        # type: ((float, float)) -> Figure
+        fig, ax = plt.subplot(1, 1, figsize=figsize)
+        plt.show()
         raise NotImplementedError("Visualization method not implemented")
+        return fig
 
     def input_from_ros(self, whatever_args):
         # type: () -> KolumboState
         raise NotImplementedError("ROS interface not implemented")
-
-
-if __name__ == '__main__':
-    env = nx.DiGraph()
-    env.add_node(1, reward=1.0)
-    env.add_node(2, reward=2.0)
-    env.add_edge(1, 2, cost=2.4)
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-    # nx.draw(env)

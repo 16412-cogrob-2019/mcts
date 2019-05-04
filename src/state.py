@@ -108,6 +108,16 @@ class KolumboState(AbstractState):
         new_state._terminal_locations = deepcopy(self._terminal_locations)
         return new_state
 
+    def set_location_terminal(self, location_id, is_terminal=True):
+        # type: (int, bool) -> KolumboState
+        """ Set a location to be a terminal or nonterminal location
+        """
+        if is_terminal:
+            self._terminal_locations.add(location_id)
+        else:
+            self._terminal_locations.remove(location_id)
+        return self
+
     def add_location(self, location_id, reward, coord):
         # type: (int, float, (float, float)) -> KolumboState
         """ Add a location with the specified reward and coordinates

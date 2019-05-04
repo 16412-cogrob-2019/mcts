@@ -84,6 +84,12 @@ class KolumboState(AbstractState):
         """
         # TODO: Add interfaces for ROS
 
+        rospy.init_node('mcts_node', anonymous=True)
+
+        self.sub_map     = rospy.Subscriber('/mcts/path_data', String, self.cb_map)
+        self.pub_command = rospy.Publisher('/mcts/command', Float32MultiArray, queue_size=1)
+
+
         if time_remains < 0:
             raise ValueError("The remaining time cannot be negative")
         self._histories = []
@@ -105,7 +111,9 @@ class KolumboState(AbstractState):
         new_state._terminal_locations = self._terminal_locations.copy()
         return new_state
 
-    def json_parse_to_map(self, json_map):
+    def cb_map(self, msg):
+
+        json_map = json.loads(msg.data)
 
         for node in json_map:
 

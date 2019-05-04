@@ -4,7 +4,8 @@ from state import AbstractState, AbstractAction
 
 
 class Node(object):
-    def __init__(self, state: AbstractState):
+    def __init__(self, state):
+        # type: (AbstractState) -> None
         """ Create a Node object with given state
         """
         self._state = state
@@ -15,7 +16,8 @@ class Node(object):
         self.num_samples = 0
 
     @property
-    def state(self) -> AbstractState:
+    def state(self):
+        # type: () -> AbstractState
         return self._state
 
     @property
@@ -23,11 +25,13 @@ class Node(object):
         return self._state.is_terminal
 
     @property
-    def parent(self) -> "Node":
+    def parent(self):
+        # type: () -> Node
         return self._parent
 
     @property
-    def depth(self) -> int:
+    def depth(self):
+        # type: () -> int
         """ The depth (distance to the root, whose parent is None, plus 1) of
             the node
         """
@@ -39,16 +43,19 @@ class Node(object):
         return depth
 
     @property
-    def unused_edges(self) -> list:
+    def unused_edges(self):
+        # type: () -> list
         return self._untried_edges
 
     @property
-    def is_expanded(self) -> bool:
+    def is_expanded(self):
+        # type: () -> bool
         """ Whether all possible actions have been tried
         """
         return len(self._untried_edges) == 0
 
-    def add_child(self, action: AbstractAction) -> "Node":
+    def add_child(self, action):
+        # type: (AbstractAction) -> Node
         """ Add a child node and set the parent of the child node and return the
             child node
         :param action: The action that would lead the current node to the child
@@ -62,7 +69,8 @@ class Node(object):
         child._parent = self
         return child
 
-    def remove_child(self, child: "Node") -> "Node":
+    def remove_child(self, child):
+        # type: (Node) -> Node
         """ Remove a child node from this node
         :param child: The child node
         """
@@ -77,15 +85,18 @@ class Node(object):
             raise ValueError("The node does not have the given child node")
         return self
 
-    def __eq__(self, other: "Node") -> bool:
+    def __eq__(self, other):
+        # type: (Node) -> bool
         return (self.__class__ == other.__class__ and
                 self._state == other._state and self._parent == other._parent)
 
-    def __str__(self) -> str:
+    def __str__(self):
+        # type: () -> str
         return str(self._state)
 
 
-def select(node: Node, exploration_const: float = 1.0) -> (AbstractAction, Node):
+def select(node, exploration_const=1.0):
+    # type: (Node, float) -> (AbstractAction, Node)
     """ Select the best child node based on UCB; if there are multiple
         child nodes with the max UCB, randomly select one
     :param node: The parent node
@@ -108,7 +119,8 @@ def select(node: Node, exploration_const: float = 1.0) -> (AbstractAction, Node)
     return max_action, node.children[max_action]
 
 
-def expand(node: Node) -> Node:
+def expand(node):
+    # type: (Node) -> Node
     """ Randomly select an untried action and create a child node based on it
         Return the new child node
     :param node: The parent node
@@ -121,7 +133,8 @@ def expand(node: Node) -> Node:
     return node.add_child(action)
 
 
-def default_rollout_policy(state: AbstractState) -> float:
+def default_rollout_policy(state):
+    # type: (AbstractState) -> float
     """ The default policy for simulation is to randomly (uniform distribution)
         select an action to update the state and repeat the simulation until
         a terminal state is reached
@@ -134,7 +147,8 @@ def default_rollout_policy(state: AbstractState) -> float:
     return state.reward
 
 
-def backpropagate(node: Node, reward: float = 0.0) -> None:
+def backpropagate(node, reward=0.0):
+    # type: (Node, float) -> None
     """ Propagate the reward and sample count from the specified leaf node
         back all the way to the root node (the node with no parent)
     :param node: The node where the reward starts
@@ -146,10 +160,11 @@ def backpropagate(node: Node, reward: float = 0.0) -> None:
         node = node.parent
 
 
-def execute_round(root: Node, max_tree_depth: int = 15,
+def execute_round(root, max_tree_depth=15,
                   tree_select_policy=select, tree_expand_policy=expand,
                   rollout_policy=default_rollout_policy,
-                  backpropagate_method=backpropagate) -> None:
+                  backpropagate_method=backpropagate):
+    # type: (Node, int, callable, callable, callable, callable) -> None
     """ Perform selection, expansion, simulation and backpropagation with
         one sample
         :param root: The Node object from which the select step starts
@@ -182,11 +197,11 @@ def execute_round(root: Node, max_tree_depth: int = 15,
 
 
 class MonteCarloSearchTree:
-    def __init__(self, initial_state: AbstractState, samples: int = 1000,
-                 max_tree_depth: int = 10,
+    def __init__(self, initial_state, samples=1000, max_tree_depth=10,
                  tree_select_policy=select, tree_expand_policy=expand,
                  rollout_policy=default_rollout_policy,
                  backpropagate_method=backpropagate):
+        # type: (AbstractState, int, int, callable, callable, callable, callable) -> None
         """ Create a MonteCarloSearchTree object
         :param initial_state: The initial state
         :param samples: The number of samples to generate to obtain the best
@@ -218,7 +233,8 @@ class MonteCarloSearchTree:
         self._root = Node(initial_state)
         self._max_tree_depth = max_tree_depth
 
-    def _search(self, node: Node, search_depth: int = 1) -> (float, list):
+    def _search(self, node, search_depth=1):
+        # type: (Node, int) -> (float, list)
         """ Recursively search for a best sequence of actions
             :return: The reward of the last (deepest child node) and the
                      sequence of actions that leads to the optimal child node
@@ -247,8 +263,8 @@ class MonteCarloSearchTree:
                 best_reward = child_reward
         return best_reward, best_act_seq
 
-    def search_for_actions(self, search_depth: int = 1,
-                           random_seed: int = None) -> list:
+    def search_for_actions(self, search_depth=1, random_seed=None):
+        # type: (int, int) -> list
         """ With given initial state, obtain the best actions to take by MCTS
         :param search_depth: How many steps of actions are wanted
         :param random_seed: When not None, set the random seed before running
@@ -265,7 +281,8 @@ class MonteCarloSearchTree:
                           backpropagate_method=self._back_propagate_policy)
         return self._search(self._root, search_depth)[1]
 
-    def update_root(self, action: AbstractAction) -> "MonteCarloSearchTree":
+    def update_root(self, action):
+        # type: (AbstractAction) -> MonteCarloSearchTree
         """ Update the root node to reflect the new state after an action is
             taken
         :param action: The action that brings a new state

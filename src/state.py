@@ -139,7 +139,7 @@ class KolumboState(AbstractState):
             paths = node['paths']
 
             # add locations to graph
-            self.add_location(node_id, reward, [x,y])
+            self.add_location(node_id, reward, [x, y])
 
             # add connectivity to graph
             for con_node, con_cost, con_path in zip(connected_to, costs, paths):
@@ -415,13 +415,13 @@ class KolumboState(AbstractState):
         title_font = {'fontname': 'Sans Serif', 'size': '16', 'color': 'black',
                       'weight': 'bold'}
         x_min = min(coord[0] for coord in coords.values()) - buffer_size \
-            - max_reward_radius
+                - max_reward_radius
         x_max = max(coord[0] for coord in coords.values()) + buffer_size \
-            + max_reward_radius
+                + max_reward_radius
         y_min = min(coord[1] for coord in coords.values()) - buffer_size \
-            - max_reward_radius
+                - max_reward_radius
         y_max = max(coord[1] for coord in coords.values()) + buffer_size \
-            + max_reward_radius
+                + max_reward_radius
 
         # Initialize the figure
         fig = plt.figure(figsize=fig_size)
@@ -447,10 +447,10 @@ class KolumboState(AbstractState):
                              (max_reward - min_reward) + min_reward_radius)
             x, y = location
             ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
-                         facecolor=colors['reward'],
-                         alpha=(visited_reward_transparency
-                                if node in self.visited else 1.0),
-                         zorder=z['reward']))
+                                facecolor=colors['reward'],
+                                alpha=(visited_reward_transparency
+                                       if node in self.visited else 1.0),
+                                zorder=z['reward']))
 
         # Plot agents and trajectories
         for k in range(len(self._histories)):
@@ -459,7 +459,7 @@ class KolumboState(AbstractState):
             a_color = agent_color[k % len(self._histories)]
             # Plot trajectories for completed actions
             for i in range(1, len(agent_history)):
-                prev_loc_id = agent_history[i-1]
+                prev_loc_id = agent_history[i - 1]
                 cur_loc_id = agent_history[i]
                 prev_loc = coords[prev_loc_id]
                 cur_loc = coords[cur_loc_id]
@@ -508,11 +508,13 @@ class KolumboState(AbstractState):
                                     length_includes_head=True))
 
         # Plotting
-        plt.title(
-            'Agents Trajectories \n Accumulated Reward: ' + str(
-                sum(reward for loc, reward in
-                    self.rewards_at_all_locations.items() if
-                    loc in self.visited)), title_font)
+        print(self._time_remains)
+        plt.title("Agents Trajectories \nAccumulated Reward: {0}\n"
+                  "Time Remaining: {1}"
+                  .format(sum(reward for loc, reward in
+                              self.rewards_at_all_locations.items() if
+                              loc in self.visited), self._time_remains),
+                  title_font)
         plt.xlabel('x', title_font)
         plt.ylabel('y', title_font)
         ax.grid(False)

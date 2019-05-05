@@ -1,8 +1,8 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, FancyArrow
+from matplotlib import transforms
 from abc import ABCMeta
 from copy import deepcopy
 
@@ -399,13 +399,15 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self, file_name=None, fig_size=(15, 15), buffer_size=0.25,
+    def visualize(self, file_name=None, fig_size=(15, 15), buffer_size=0.05,
                   max_reward_radius=0.35, min_reward_radius=0.15,
                   visited_reward_transparency=0.25, trajectory_width=10.0,
-                  agent_radius=0.1, boundary_width=0.05):
-        # type: (str, (float, float), float, float, float, float, float, float, float) -> Figure
-        colors = {'reward': 'deepskyblue', 'trajectory': 'peachpuff',
-                  'boundary': 'firebrick', 'agent': 'darkorange'}
+                  agent_length=0.1, agent_width=0.05, boundary_width=20):
+        colors = {'reward': 'deepskyblue', 'boundary': 'firebrick'}
+        trajectory_color = ['peachpuff', 'lightcoral', 'rosybrown', 'khaki',
+                            'darkgoldenrod']
+        agent_color = ['darkorange', 'salmon', 'darksalmon', 'goldenrod',
+                       'olive']
         z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
         coords = self.coord_at_all_locations
         rewards = self.rewards_at_all_locations
@@ -426,11 +428,11 @@ class KolumboState(AbstractState):
         ax = fig.add_subplot(111)
 
         # Plot boundaries
-        plt.hlines(y=[y_min, y_max], xmin=x_min-boundary_width,
-                   xmax=x_max+boundary_width, color=colors['boundary'],
+        plt.hlines(y=[y_min, y_max], xmin=x_min,
+                   xmax=x_max, color=colors['boundary'],
                    linewidth=boundary_width, zorder=z['boundary'])
-        plt.vlines(x=[x_min, x_max], ymin=y_min-boundary_width,
-                   ymax=y_max+boundary_width, color=colors['boundary'],
+        plt.vlines(x=[x_min, x_max], ymin=y_min,
+                   ymax=y_max, color=colors['boundary'],
                    linewidth=boundary_width, zorder=z['boundary'])
 
         # Plot rewards
@@ -453,6 +455,8 @@ class KolumboState(AbstractState):
         # Plot agents and trajectories
         for k in range(len(self._histories)):
             agent_history = self._histories[k]
+            t_color = trajectory_color[k % len(self._histories)]
+            a_color = agent_color[k % len(self._histories)]
             # Plot trajectories for completed actions
             for i in range(1, len(agent_history)):
                 prev_loc_id = agent_history[i-1]
@@ -462,12 +466,18 @@ class KolumboState(AbstractState):
                 ax.add_line(Line2D(xdata=(prev_loc[0], cur_loc[0]),
                                    ydata=(prev_loc[1], cur_loc[1]),
                                    linewidth=trajectory_width,
-                                   color=colors['trajectory'],
+                                   color=t_color,
                                    zorder=z['trajectory']))
-            # Plot trajectories for ongoing actions
+            # Plot agents and trajectories for ongoing actions
             status = self._statuses[k]
             if status[2] == 0:
                 x_c, y_c = coords[status[0]]
+                if len(agent_history) <= 1:
+                    x_s, y_s = x_c, y_c - agent_length / 2
+                    x_e, y_e = x_c, y_c + agent_length / 2
+                else:
+                    x_s, y_s = coords[agent_history[-2]]
+                    x_e, y_e = coords[agent_history[-1]]
             else:
                 cost = costs[(status[0], status[1])]
                 x_s, y_s = coords[status[0]]
@@ -476,12 +486,26 @@ class KolumboState(AbstractState):
                 y_c = y_e - status[2] / cost * (y_e - y_s)
                 ax.add_line(Line2D(xdata=(x_s, x_c), ydata=(y_s, y_c),
                                    linewidth=trajectory_width,
-                                   color=colors['trajectory'],
+                                   color=t_color,
                                    zorder=z['trajectory']))
-            # Plot agents
-            ax.add_patch(Circle(xy=(x_c, y_c), radius=agent_radius,
-                         edgecolor=colors['agent'], facecolor=colors['agent'],
-                         alpha=1.0, zorder=z['agent']))
+            if x_e == x_s:
+                dx, dy = 0, agent_length * (1 if y_e >= y_s else -1)
+            elif y_e == y_s:
+                dx, dy = agent_length * float(1 if x_e >= x_s else -1), 0
+            else:
+                asp_ratio = (x_e - x_s) / (y_e - y_s)
+                dy = agent_length / (1 + asp_ratio ** 2) ** 0.5
+                dy *= float(1 if y_e >= y_s else -1)
+                dx = dy * asp_ratio
+            x_start = x_c - dx / 2
+            y_start = y_c - dy / 2
+            ax.add_patch(FancyArrow(x=x_start, y=y_start,
+                                    dx=dx, dy=dy, fc=a_color,
+                                    width=agent_width,
+                                    head_width=agent_width,
+                                    head_length=agent_length * 0.2,
+                                    zorder=z['agent'],
+                                    length_includes_head=True))
 
         # Plotting
         plt.title(

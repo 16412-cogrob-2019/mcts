@@ -1,17 +1,21 @@
+import abc
+ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
 import networkx as nx
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from abc import ABCMeta
-from copy import deepcopy
+import matplotlib.pyplot as plt
 import json
 
 
-class AbstractAction:
-    __metaclass__ = ABCMeta
+class AbstractAction(ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        pass
 
 
-class AbstractState:
-    __metaclass__ = ABCMeta
+class AbstractState(ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        pass
 
     @property
     def reward(self):
@@ -70,13 +74,6 @@ class KolumboAction(AbstractAction):
         # type: () -> float
         return self._time
 
-    def __str__(self):
-        # type: () -> str
-        return """Action: agent {0} move from location {1} to location{2}
-                    in time {3}""".format(
-            self._agent_id, self._start_location,
-            self._end_location, self._time)
-
 
 class KolumboState(AbstractState):
     def __init__(self, environment=nx.DiGraph(), time_remains=10.0):
@@ -88,6 +85,7 @@ class KolumboState(AbstractState):
             that node
         """
         # TODO: Add interfaces for ROS
+
         if time_remains < 0:
             raise ValueError("The remaining time cannot be negative")
         self._histories = []
@@ -104,23 +102,23 @@ class KolumboState(AbstractState):
         """
         new_state = KolumboState(environment=self._environment,
                                  time_remains=self._time_remains)
-        new_state._histories = deepcopy(self._histories)
-        new_state._statuses = deepcopy(self._statuses)
-        new_state._terminal_locations = deepcopy(self._terminal_locations)
+        new_state._histories = self._histories.copy()
+        new_state._statuses = self._statuses.copy()
+        new_state._terminal_locations = self._terminal_locations.copy()
         return new_state
 
     def json_parse_to_map(self, json_map):
         """ Parses incoming data to create new graph
         """
         for node in json_map:
-            node_id = node['node_id']
-            has_agent = node['has_agent']
-            reward = node['node_reward']
-            x = node['x']
-            y = node['y']
-            connected_to = node['connectivity']
-            costs = node['costs']
-            paths = node['paths']
+            node_id         = node['node_id']
+            has_agent           = node['has_agent']
+            reward          = node['node_reward']
+            x               = node['x']
+            y               = node['y']
+            connected_to    = node['connectivity']
+            costs           = node['costs']
+            paths           = node['paths']
 
             # add locations to graph
             self.add_location(node_id, reward, [x,y])
@@ -135,15 +133,6 @@ class KolumboState(AbstractState):
 
         return self
 
-    def set_location_terminal(self, location_id, is_terminal=True):
-        # type: (int, bool) -> KolumboState
-        """ Set a location to be a terminal or nonterminal location
-        """
-        if is_terminal:
-            self._terminal_locations.add(location_id)
-        else:
-            self._terminal_locations.remove(location_id)
-        return self
 
     def add_location(self, location_id, reward, coord):
         # type: (int, float, (float, float)) -> KolumboState
@@ -367,7 +356,8 @@ class KolumboState(AbstractState):
         start_loc = self._statuses[self._agent_id][0]
         return [KolumboAction(self._agent_id, start_loc, path[1],
                               self.cost_at_path(*path))
-                for path in self.outgoing_paths(start_loc)]
+                for path in self.outgoing_paths(start_loc)
+                if self.cost_at_path(*path) <= self._time_remains]
 
     def execute_action(self, action):
         # type: (KolumboAction) -> KolumboState
@@ -382,9 +372,19 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self, figsize=(10, 10)):
-        # type: ((float, float)) -> Figure
-        fig, ax = plt.subplot(1, 1, figsize=figsize)
-        plt.show()
+    def visualize(self):
+        # type: () -> Figure
         raise NotImplementedError("Visualization method not implemented")
-        return fig
+
+    def input_from_ros(self, whatever_args):
+        # type: () -> KolumboState
+        raise NotImplementedError("ROS interface not implemented")
+
+
+if __name__ == '__main__':
+    env = nx.DiGraph()
+    env.add_node(1, reward=1.0)
+    env.add_node(2, reward=2.0)
+    env.add_edge(1, 2, cost=2.4)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+    # nx.draw(env)

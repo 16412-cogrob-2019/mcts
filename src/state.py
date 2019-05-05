@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from abc import ABCMeta
 from copy import deepcopy
-import json
 
 
 class AbstractAction:
@@ -110,6 +109,7 @@ class KolumboState(AbstractState):
         return new_state
 
     def json_parse_to_map(self, json_map):
+        # type: (dict) -> KolumboState
         """ Parses incoming data to create new graph
         """
         for node in json_map:

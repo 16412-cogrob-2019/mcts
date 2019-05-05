@@ -73,10 +73,9 @@ class KolumboAction(AbstractAction):
 
     def __str__(self):
         # type: () -> str
-        return """Action: agent {0} move from location {1} to location {2}
-                    in time {3}""".format(
-            self._agent_id, self._start_location,
-            self._end_location, self._time)
+        return "Action: agent {0} move from location {1} to location {2} " \
+               "in time {3}".format(self._agent_id, self._start_location,
+                                    self._end_location, self._time)
 
 
 class KolumboState(AbstractState):
@@ -109,6 +108,21 @@ class KolumboState(AbstractState):
         new_state._statuses = deepcopy(self._statuses)
         new_state._terminal_locations = deepcopy(self._terminal_locations)
         return new_state
+
+    def __str__(self):
+        # type: () -> str
+        res = ""
+        for i in range(len(self._statuses)):
+            status = self._statuses[i]
+            if i != 0:
+                res += "\n"
+            res += "Agent {0} ".format(i)
+            if status[2] == 0:
+                res += "is at location {0}".format(status[0])
+            else:
+                res += "is moving from location {0} to location {1} in " \
+                       "time {2}".format(status[0], status[1], status[2])
+        return res
 
     def json_parse_to_map(self, json_map):
         # type: (dict) -> KolumboState
@@ -312,7 +326,8 @@ class KolumboState(AbstractState):
                                          time_remains - time_elapsed)
             else:
                 self._statuses[agent] = (end_loc, end_loc, 0.0)
-                self._histories[agent].append(end_loc)
+                if time_elapsed != 0:
+                    self._histories[agent].append(end_loc)
         self._time_remains -= time_elapsed
         return self
 
@@ -384,13 +399,13 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self, file_name=None, fig_size=(15, 15), buffer_size=0.5,
-                  max_reward_radius=0.5, min_reward_radius=0.2,
-                  visited_reward_transparency=0.5, trajectory_width=0.05,
+    def visualize(self, file_name=None, fig_size=(15, 15), buffer_size=0.25,
+                  max_reward_radius=0.35, min_reward_radius=0.15,
+                  visited_reward_transparency=0.25, trajectory_width=10.0,
                   agent_radius=0.1, boundary_width=0.05):
-        # type: # (str, (float, float), float, float, float, float, float, float, float) -> Figure
-        colors = {'reward': 'blue', 'trajectory': 'orange', 'boundary': 'red',
-                  'agent': 'orange'}
+        # type: (str, (float, float), float, float, float, float, float, float, float) -> Figure
+        colors = {'reward': 'deepskyblue', 'trajectory': 'peachpuff',
+                  'boundary': 'firebrick', 'agent': 'darkorange'}
         z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
         coords = self.coord_at_all_locations
         rewards = self.rewards_at_all_locations
@@ -411,11 +426,11 @@ class KolumboState(AbstractState):
         ax = fig.add_subplot(111)
 
         # Plot boundaries
-        plt.hlines(y=[y_min, y_max], xmin=x_min - boundary_width,
-                   xmax=x_max + boundary_width, color=colors['boundary'],
+        plt.hlines(y=[y_min, y_max], xmin=x_min-boundary_width,
+                   xmax=x_max+boundary_width, color=colors['boundary'],
                    linewidth=boundary_width, zorder=z['boundary'])
-        plt.vlines(x=[x_min, x_max], ymin=y_min - boundary_width,
-                   ymax=y_max + boundary_width, color=colors['boundary'],
+        plt.vlines(x=[x_min, x_max], ymin=y_min-boundary_width,
+                   ymax=y_max+boundary_width, color=colors['boundary'],
                    linewidth=boundary_width, zorder=z['boundary'])
 
         # Plot rewards
@@ -426,13 +441,13 @@ class KolumboState(AbstractState):
         for node, location in coords.items():
             reward = self.reward_at_location(node)
             reward_radius = ((reward - min_reward) *
-                            (max_reward_radius - min_reward_radius) /
-                            (max_reward - min_reward) + min_reward_radius)
+                             (max_reward_radius - min_reward_radius) /
+                             (max_reward - min_reward) + min_reward_radius)
             x, y = location
             ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
-                         edgecolor='k', facecolor=colors['reward'],
+                         facecolor=colors['reward'],
                          alpha=(visited_reward_transparency
-                                if location in self.visited else 1.0),
+                                if node in self.visited else 1.0),
                          zorder=z['reward']))
 
         # Plot agents and trajectories
@@ -454,7 +469,7 @@ class KolumboState(AbstractState):
             if status[2] == 0:
                 x_c, y_c = coords[status[0]]
             else:
-                cost = costs[status[0], status[1]]
+                cost = costs[(status[0], status[1])]
                 x_s, y_s = coords[status[0]]
                 x_e, y_e = coords[status[1]]
                 x_c = x_e - status[2] / cost * (x_e - x_s)
@@ -463,8 +478,9 @@ class KolumboState(AbstractState):
                                    linewidth=trajectory_width,
                                    color=colors['trajectory'],
                                    zorder=z['trajectory']))
+            # Plot agents
             ax.add_patch(Circle(xy=(x_c, y_c), radius=agent_radius,
-                         edgecolor='k', facecolor=colors['agent'],
+                         edgecolor=colors['agent'], facecolor=colors['agent'],
                          alpha=1.0, zorder=z['agent']))
 
         # Plotting

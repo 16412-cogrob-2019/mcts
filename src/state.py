@@ -1,6 +1,8 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
+from matplotlib.patches import Circle
 from abc import ABCMeta
 from copy import deepcopy
 
@@ -71,7 +73,7 @@ class KolumboAction(AbstractAction):
 
     def __str__(self):
         # type: () -> str
-        return """Action: agent {0} move from location {1} to location{2}
+        return """Action: agent {0} move from location {1} to location {2}
                     in time {3}""".format(
             self._agent_id, self._start_location,
             self._end_location, self._time)
@@ -382,9 +384,105 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self, figsize=(10, 10)):
-        # type: ((float, float)) -> Figure
-        fig, ax = plt.subplot(1, 1, figsize=figsize)
+    def visualize(self, file_name=None, fig_size=(15, 15), buffer_size=0.5,
+                  max_reward_radius=0.5, min_reward_radius=0.2,
+                  visited_reward_transparency=0.5, trajectory_width=0.05,
+                  agent_radius=0.1, boundary_width=0.05):
+        # type: # (str, (float, float), float, float, float, float, float, float, float) -> Figure
+        colors = {'reward': 'blue', 'trajectory': 'orange', 'boundary': 'red',
+                  'agent': 'orange'}
+        z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
+        coords = self.coord_at_all_locations
+        rewards = self.rewards_at_all_locations
+        costs = self.costs_at_all_paths
+        title_font = {'fontname': 'Sans Serif', 'size': '16', 'color': 'black',
+                      'weight': 'bold'}
+        x_min = min(coord[0] for coord in coords.values()) - buffer_size \
+            - max_reward_radius
+        x_max = max(coord[0] for coord in coords.values()) + buffer_size \
+            + max_reward_radius
+        y_min = min(coord[1] for coord in coords.values()) - buffer_size \
+            - max_reward_radius
+        y_max = max(coord[1] for coord in coords.values()) + buffer_size \
+            + max_reward_radius
+
+        # Initialize the figure
+        fig = plt.figure(figsize=fig_size)
+        ax = fig.add_subplot(111)
+
+        # Plot boundaries
+        plt.hlines(y=[y_min, y_max], xmin=x_min - boundary_width,
+                   xmax=x_max + boundary_width, color=colors['boundary'],
+                   linewidth=boundary_width, zorder=z['boundary'])
+        plt.vlines(x=[x_min, x_max], ymin=y_min - boundary_width,
+                   ymax=y_max + boundary_width, color=colors['boundary'],
+                   linewidth=boundary_width, zorder=z['boundary'])
+
+        # Plot rewards
+        max_reward = max(rewards.values())
+        non_zero_rewards = [reward for reward in rewards.values()
+                            if reward != 0]
+        min_reward = 0 if non_zero_rewards == [] else min(non_zero_rewards)
+        for node, location in coords.items():
+            reward = self.reward_at_location(node)
+            reward_radius = ((reward - min_reward) *
+                            (max_reward_radius - min_reward_radius) /
+                            (max_reward - min_reward) + min_reward_radius)
+            x, y = location
+            ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
+                         edgecolor='k', facecolor=colors['reward'],
+                         alpha=(visited_reward_transparency
+                                if location in self.visited else 1.0),
+                         zorder=z['reward']))
+
+        # Plot agents and trajectories
+        for k in range(len(self._histories)):
+            agent_history = self._histories[k]
+            # Plot trajectories for completed actions
+            for i in range(1, len(agent_history)):
+                prev_loc_id = agent_history[i-1]
+                cur_loc_id = agent_history[i]
+                prev_loc = coords[prev_loc_id]
+                cur_loc = coords[cur_loc_id]
+                ax.add_line(Line2D(xdata=(prev_loc[0], cur_loc[0]),
+                                   ydata=(prev_loc[1], cur_loc[1]),
+                                   linewidth=trajectory_width,
+                                   color=colors['trajectory'],
+                                   zorder=z['trajectory']))
+            # Plot trajectories for ongoing actions
+            status = self._statuses[k]
+            if status[2] == 0:
+                x_c, y_c = coords[status[0]]
+            else:
+                cost = costs[status[0], status[1]]
+                x_s, y_s = coords[status[0]]
+                x_e, y_e = coords[status[1]]
+                x_c = x_e - status[2] / cost * (x_e - x_s)
+                y_c = y_e - status[2] / cost * (y_e - y_s)
+                ax.add_line(Line2D(xdata=(x_s, x_c), ydata=(y_s, y_c),
+                                   linewidth=trajectory_width,
+                                   color=colors['trajectory'],
+                                   zorder=z['trajectory']))
+            ax.add_patch(Circle(xy=(x_c, y_c), radius=agent_radius,
+                         edgecolor='k', facecolor=colors['agent'],
+                         alpha=1.0, zorder=z['agent']))
+
+        # Plotting
+        plt.title(
+            'Agents Trajectories \n Accumulated Reward: ' + str(
+                sum(reward for loc, reward in
+                    self.rewards_at_all_locations.items() if
+                    loc in self.visited)), title_font)
+        plt.xlabel('x', title_font)
+        plt.ylabel('y', title_font)
+        ax.grid(False)
+        ax.axis('equal')
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min, y_max)
+
+        # Save and display
         plt.show()
-        raise NotImplementedError("Visualization method not implemented")
+        if file_name is not None:
+            plt.savefig(file_name)
+
         return fig

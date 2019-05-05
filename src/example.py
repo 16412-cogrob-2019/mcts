@@ -9,4 +9,7 @@ initial_state.add_path(0, 1, 1.0).add_path(1, 2, 2.0).add_path(1, 3, 4.0) \
 initial_state.add_agent(0).add_agent(3)
 mcts = MonteCarloSearchTree(initial_state)
 action = mcts.search_for_actions()[0]
+print(action)
 state = initial_state.execute_action(action)
+initial_state.visualize()
+state.visualize()

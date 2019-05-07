@@ -1,7 +1,8 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from matplotlib.patches import Circle, FancyArrow
+import math
+import numpy as np
+from matplotlib.patches import Circle, FancyArrow, Rectangle, Polygon
 from matplotlib import transforms
 from abc import ABCMeta
 from copy import deepcopy
@@ -399,10 +400,10 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self, file_name=None, fig_size=(15, 15), buffer_size=0.05,
+    def visualize(self, file_name=None, fig_size=(5, 5), buffer_size=0.10,
                   max_reward_radius=0.35, min_reward_radius=0.15,
-                  visited_reward_transparency=0.25, trajectory_width=10.0,
-                  agent_length=0.1, agent_width=0.05, boundary_width=20):
+                  visited_reward_transparency=0.25, trajectory_width=0.06,
+                  agent_length=0.2, agent_width=0.1):
         colors = {'reward': 'deepskyblue', 'boundary': 'firebrick'}
         trajectory_color = ['peachpuff', 'lightcoral', 'rosybrown', 'khaki',
                             'darkgoldenrod']
@@ -423,17 +424,41 @@ class KolumboState(AbstractState):
         y_max = max(coord[1] for coord in coords.values()) + buffer_size \
                 + max_reward_radius
 
+        def rectangular_polygon_coords(loc_0, loc_f, width):
+            """ Generates a rectangle between two points with a specific width
+            :param loc_0: A tuple of (x,y) positions representing the start
+            :param loc_f: A tuple of (x,y) positions representing the end
+            :param width: A scalar width of the rectangular polygon
+            :return: A numpy array of the Polygon coordinates to be plotted
+            """
+            delta_y = loc_f[1]-loc_0[1]
+            delta_x = loc_f[0]-loc_0[0]
+            angle   = math.atan2(delta_y, delta_x)
+            rect_x  = width/2 * np.cos(angle - math.pi/2)
+            rect_y  = width/2 * np.sin(angle - math.pi/2)
+            rect    = np.array([[loc_0[0] - rect_x, loc_0[1] - rect_y],
+                                [loc_f[0] - rect_x, loc_f[1] - rect_y],
+                                [loc_f[0] + rect_x, loc_f[1] + rect_y],
+                                [loc_0[0] + rect_x, loc_0[1] + rect_y]])
+            return rect
+
         # Initialize the figure
         fig = plt.figure(figsize=fig_size)
         ax = fig.add_subplot(111)
 
-        # Plot boundaries
-        plt.hlines(y=[y_min, y_max], xmin=x_min,
-                   xmax=x_max, color=colors['boundary'],
-                   linewidth=boundary_width, zorder=z['boundary'])
-        plt.vlines(x=[x_min, x_max], ymin=y_min,
-                   ymax=y_max, color=colors['boundary'],
-                   linewidth=boundary_width, zorder=z['boundary'])
+        # Plot the boundaries
+        ll_corner = (x_min, y_min)
+        lr_corner = (x_max, y_min)
+        ul_corner = (x_min, y_max)
+        ur_corner = (x_max, y_max)
+        for (c1, c2) in [(ll_corner, ul_corner), 
+                         (ul_corner, ur_corner),
+                         (ur_corner, lr_corner),
+                         (lr_corner, ll_corner)]:
+            polygon_coords = rectangular_polygon_coords(c1, c2, buffer_size) 
+            ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                 color=colors['boundary'],
+                                 zorder=z['boundary']))
 
         # Plot rewards
         max_reward = max(rewards.values())
@@ -463,11 +488,11 @@ class KolumboState(AbstractState):
                 cur_loc_id = agent_history[i]
                 prev_loc = coords[prev_loc_id]
                 cur_loc = coords[cur_loc_id]
-                ax.add_line(Line2D(xdata=(prev_loc[0], cur_loc[0]),
-                                   ydata=(prev_loc[1], cur_loc[1]),
-                                   linewidth=trajectory_width,
-                                   color=t_color,
-                                   zorder=z['trajectory']))
+                polygon_coords = rectangular_polygon_coords(prev_loc, cur_loc, 
+                                                            trajectory_width) 
+                ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                     color=t_color, zorder=z['trajectory']))
+
             # Plot agents and trajectories for ongoing actions
             status = self._statuses[k]
             if status[2] == 0:
@@ -484,10 +509,11 @@ class KolumboState(AbstractState):
                 x_e, y_e = coords[status[1]]
                 x_c = x_e - status[2] / cost * (x_e - x_s)
                 y_c = y_e - status[2] / cost * (y_e - y_s)
-                ax.add_line(Line2D(xdata=(x_s, x_c), ydata=(y_s, y_c),
-                                   linewidth=trajectory_width,
-                                   color=t_color,
-                                   zorder=z['trajectory']))
+                polygon_coords = rectangular_polygon_coords((x_s, y_s), 
+                                                            (x_c, y_c), 
+                                                            trajectory_width) 
+                ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                     color=t_color, zorder=z['trajectory']))
             if x_e == x_s:
                 dx, dy = 0, agent_length * (1 if y_e >= y_s else -1)
             elif y_e == y_s:
@@ -520,7 +546,7 @@ class KolumboState(AbstractState):
         ax.grid(False)
         ax.axis('equal')
         ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
+        ax.set_ylim(y_min-buffer_size, y_max+buffer_size)
 
         # Save and display
         plt.show()

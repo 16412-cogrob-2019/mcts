@@ -400,15 +400,21 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self, file_name=None, fig_size=(5, 5), buffer_size=0.10,
+    def visualize(self, file_name=None, fig_size=(8, 6.5), buffer_size=0.10,
                   max_reward_radius=0.35, min_reward_radius=0.15,
                   visited_reward_transparency=0.25, trajectory_width=0.06,
                   agent_length=0.2, agent_width=0.1):
         colors = {'reward': 'deepskyblue', 'boundary': 'firebrick'}
-        trajectory_color = ['peachpuff', 'lightcoral', 'rosybrown', 'khaki',
-                            'darkgoldenrod']
-        agent_color = ['darkorange', 'salmon', 'darksalmon', 'goldenrod',
-                       'olive']
+        agent_color =      ['darkorange', 
+                            'seagreen', 
+                            'darkorchid',
+                            'gold',
+                            'grey']
+        trajectory_color = ['peachpuff', 
+                            'palegreen', 
+                            'plum', 
+                            'palegoldenrod',
+                            'silver']
         z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
         coords = self.coord_at_all_locations
         rewards = self.rewards_at_all_locations

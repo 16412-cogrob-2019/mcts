@@ -1,21 +1,19 @@
-import abc
-ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
 import networkx as nx
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
-import json
+import math
+import numpy as np
+from matplotlib.patches import Circle, FancyArrow, Rectangle, Polygon
+from matplotlib import transforms
+from abc import ABCMeta
+from copy import deepcopy
 
 
-class AbstractAction(ABC):
-    @abc.abstractmethod
-    def __init__(self):
-        pass
+class AbstractAction:
+    __metaclass__ = ABCMeta
 
 
-class AbstractState(ABC):
-    @abc.abstractmethod
-    def __init__(self):
-        pass
+class AbstractState:
+    __metaclass__ = ABCMeta
 
     @property
     def reward(self):
@@ -74,6 +72,12 @@ class KolumboAction(AbstractAction):
         # type: () -> float
         return self._time
 
+    def __str__(self):
+        # type: () -> str
+        return "Action: agent {0} move from location {1} to location {2} " \
+               "in time {3}".format(self._agent_id, self._start_location,
+                                    self._end_location, self._time)
+
 
 class KolumboState(AbstractState):
     def __init__(self, environment=nx.DiGraph(), time_remains=10.0):
@@ -85,7 +89,6 @@ class KolumboState(AbstractState):
             that node
         """
         # TODO: Add interfaces for ROS
-
         if time_remains < 0:
             raise ValueError("The remaining time cannot be negative")
         self._histories = []
@@ -102,37 +105,63 @@ class KolumboState(AbstractState):
         """
         new_state = KolumboState(environment=self._environment,
                                  time_remains=self._time_remains)
-        new_state._histories = self._histories.copy()
-        new_state._statuses = self._statuses.copy()
-        new_state._terminal_locations = self._terminal_locations.copy()
+        new_state._histories = deepcopy(self._histories)
+        new_state._statuses = deepcopy(self._statuses)
+        new_state._terminal_locations = deepcopy(self._terminal_locations)
         return new_state
 
+    def __str__(self):
+        # type: () -> str
+        res = ""
+        for i in range(len(self._statuses)):
+            status = self._statuses[i]
+            if i != 0:
+                res += "\n"
+            res += "Agent {0} ".format(i)
+            if status[2] == 0:
+                res += "is at location {0}".format(status[0])
+            else:
+                res += "is moving from location {0} to location {1} in " \
+                       "time {2}".format(status[0], status[1], status[2])
+        return res
+
     def json_parse_to_map(self, json_map):
+        # type: (dict) -> KolumboState
         """ Parses incoming data to create new graph
         """
         for node in json_map:
-            node_id         = node['node_id']
-            has_agent           = node['has_agent']
-            reward          = node['node_reward']
-            x               = node['x']
-            y               = node['y']
-            connected_to    = node['connectivity']
-            costs           = node['costs']
-            paths           = node['paths']
+            node_id = node['node_id']
+            has_agent = node['agent_id']
+            reward = node['node_reward']
+            x = node['x']
+            y = node['y']
+            connected_to = node['connectivity']
+            costs = node['costs']
+            paths = node['paths']
 
             # add locations to graph
-            self.add_location(node_id, reward, [x,y])
+            self.add_location(node_id, reward, [x, y])
 
             # add connectivity to graph
             for con_node, con_cost, con_path in zip(connected_to, costs, paths):
                 self.add_path(node_id, con_node, con_cost, con_path)
 
             # add if agent is there
-            if has_agent != 0:
+            if has_agent != -1:
                 self.add_agent(node_id)
+
 
         return self
 
+    def set_location_terminal(self, location_id, is_terminal=True):
+        # type: (int, bool) -> KolumboState
+        """ Set a location to be a terminal or nonterminal location
+        """
+        if is_terminal:
+            self._terminal_locations.add(location_id)
+        else:
+            self._terminal_locations.remove(location_id)
+        return self
 
     def add_location(self, location_id, reward, coord):
         # type: (int, float, (float, float)) -> KolumboState
@@ -299,7 +328,8 @@ class KolumboState(AbstractState):
                                          time_remains - time_elapsed)
             else:
                 self._statuses[agent] = (end_loc, end_loc, 0.0)
-                self._histories[agent].append(end_loc)
+                if time_elapsed != 0:
+                    self._histories[agent].append(end_loc)
         self._time_remains -= time_elapsed
         return self
 
@@ -356,8 +386,7 @@ class KolumboState(AbstractState):
         start_loc = self._statuses[self._agent_id][0]
         return [KolumboAction(self._agent_id, start_loc, path[1],
                               self.cost_at_path(*path))
-                for path in self.outgoing_paths(start_loc)
-                if self.cost_at_path(*path) <= self._time_remains]
+                for path in self.outgoing_paths(start_loc)]
 
     def execute_action(self, action):
         # type: (KolumboAction) -> KolumboState
@@ -372,19 +401,163 @@ class KolumboState(AbstractState):
         new_state.evolve()
         return new_state
 
-    def visualize(self):
-        # type: () -> Figure
-        raise NotImplementedError("Visualization method not implemented")
+    def visualize(self, file_name=None, fig_size=(8, 6.5), buffer_size=0.10,
+                  max_reward_radius=0.35, min_reward_radius=0.15,
+                  visited_reward_transparency=0.25, trajectory_width=0.06,
+                  agent_length=0.2, agent_width=0.1):
+        colors = {'reward': 'deepskyblue', 'boundary': 'firebrick'}
+        agent_color =      ['darkorange', 
+                            'seagreen', 
+                            'darkorchid',
+                            'gold',
+                            'grey']
+        trajectory_color = ['peachpuff', 
+                            'palegreen', 
+                            'plum', 
+                            'palegoldenrod',
+                            'silver']
+        z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
+        coords = self.coord_at_all_locations
+        rewards = self.rewards_at_all_locations
+        costs = self.costs_at_all_paths
+        title_font = {'fontname': 'Sans Serif', 'size': '16', 'color': 'black',
+                      'weight': 'bold'}
+        x_min = min(coord[0] for coord in coords.values()) - buffer_size \
+                - max_reward_radius
+        x_max = max(coord[0] for coord in coords.values()) + buffer_size \
+                + max_reward_radius
+        y_min = min(coord[1] for coord in coords.values()) - buffer_size \
+                - max_reward_radius
+        y_max = max(coord[1] for coord in coords.values()) + buffer_size \
+                + max_reward_radius
 
-    def input_from_ros(self, whatever_args):
-        # type: () -> KolumboState
-        raise NotImplementedError("ROS interface not implemented")
+        def rectangular_polygon_coords(loc_0, loc_f, width):
+            """ Generates a rectangle between two points with a specific width
+            :param loc_0: A tuple of (x,y) positions representing the start
+            :param loc_f: A tuple of (x,y) positions representing the end
+            :param width: A scalar width of the rectangular polygon
+            :return: A numpy array of the Polygon coordinates to be plotted
+            """
+            delta_y = loc_f[1]-loc_0[1]
+            delta_x = loc_f[0]-loc_0[0]
+            angle   = math.atan2(delta_y, delta_x)
+            rect_x  = width/2 * np.cos(angle - math.pi/2)
+            rect_y  = width/2 * np.sin(angle - math.pi/2)
+            rect    = np.array([[loc_0[0] - rect_x, loc_0[1] - rect_y],
+                                [loc_f[0] - rect_x, loc_f[1] - rect_y],
+                                [loc_f[0] + rect_x, loc_f[1] + rect_y],
+                                [loc_0[0] + rect_x, loc_0[1] + rect_y]])
+            return rect
 
+        # Initialize the figure
+        fig = plt.figure(figsize=fig_size)
+        ax = fig.add_subplot(111)
 
-if __name__ == '__main__':
-    env = nx.DiGraph()
-    env.add_node(1, reward=1.0)
-    env.add_node(2, reward=2.0)
-    env.add_edge(1, 2, cost=2.4)
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-    # nx.draw(env)
+        # Plot the boundaries
+        ll_corner = (x_min, y_min)
+        lr_corner = (x_max, y_min)
+        ul_corner = (x_min, y_max)
+        ur_corner = (x_max, y_max)
+        for (c1, c2) in [(ll_corner, ul_corner), 
+                         (ul_corner, ur_corner),
+                         (ur_corner, lr_corner),
+                         (lr_corner, ll_corner)]:
+            polygon_coords = rectangular_polygon_coords(c1, c2, buffer_size) 
+            ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                 color=colors['boundary'],
+                                 zorder=z['boundary']))
+
+        # Plot rewards
+        max_reward = max(rewards.values())
+        non_zero_rewards = [reward for reward in rewards.values()
+                            if reward != 0]
+        min_reward = 0 if non_zero_rewards == [] else min(non_zero_rewards)
+        for node, location in coords.items():
+            reward = self.reward_at_location(node)
+            reward_radius = ((reward - min_reward) *
+                             (max_reward_radius - min_reward_radius) /
+                             (max_reward - min_reward) + min_reward_radius)
+            x, y = location
+            ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
+                                facecolor=colors['reward'],
+                                alpha=(visited_reward_transparency
+                                       if node in self.visited else 1.0),
+                                zorder=z['reward']))
+
+        # Plot agents and trajectories
+        for k in range(len(self._histories)):
+            agent_history = self._histories[k]
+            t_color = trajectory_color[k % len(self._histories)]
+            a_color = agent_color[k % len(self._histories)]
+            # Plot trajectories for completed actions
+            for i in range(1, len(agent_history)):
+                prev_loc_id = agent_history[i - 1]
+                cur_loc_id = agent_history[i]
+                prev_loc = coords[prev_loc_id]
+                cur_loc = coords[cur_loc_id]
+                polygon_coords = rectangular_polygon_coords(prev_loc, cur_loc, 
+                                                            trajectory_width) 
+                ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                     color=t_color, zorder=z['trajectory']))
+
+            # Plot agents and trajectories for ongoing actions
+            status = self._statuses[k]
+            if status[2] == 0:
+                x_c, y_c = coords[status[0]]
+                if len(agent_history) <= 1:
+                    x_s, y_s = x_c, y_c - agent_length / 2
+                    x_e, y_e = x_c, y_c + agent_length / 2
+                else:
+                    x_s, y_s = coords[agent_history[-2]]
+                    x_e, y_e = coords[agent_history[-1]]
+            else:
+                cost = costs[(status[0], status[1])]
+                x_s, y_s = coords[status[0]]
+                x_e, y_e = coords[status[1]]
+                x_c = x_e - status[2] / cost * (x_e - x_s)
+                y_c = y_e - status[2] / cost * (y_e - y_s)
+                polygon_coords = rectangular_polygon_coords((x_s, y_s), 
+                                                            (x_c, y_c), 
+                                                            trajectory_width) 
+                ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                     color=t_color, zorder=z['trajectory']))
+            if x_e == x_s:
+                dx, dy = 0, agent_length * (1 if y_e >= y_s else -1)
+            elif y_e == y_s:
+                dx, dy = agent_length * float(1 if x_e >= x_s else -1), 0
+            else:
+                asp_ratio = (x_e - x_s) / (y_e - y_s)
+                dy = agent_length / (1 + asp_ratio ** 2) ** 0.5
+                dy *= float(1 if y_e >= y_s else -1)
+                dx = dy * asp_ratio
+            x_start = x_c - dx / 2
+            y_start = y_c - dy / 2
+            ax.add_patch(FancyArrow(x=x_start, y=y_start,
+                                    dx=dx, dy=dy, fc=a_color,
+                                    width=agent_width,
+                                    head_width=agent_width,
+                                    head_length=agent_length * 0.2,
+                                    zorder=z['agent'],
+                                    length_includes_head=True))
+
+        # Plotting
+        print(self._time_remains)
+        plt.title("Agents Trajectories \nAccumulated Reward: {0}\n"
+                  "Time Remaining: {1}"
+                  .format(sum(reward for loc, reward in
+                              self.rewards_at_all_locations.items() if
+                              loc in self.visited), self._time_remains),
+                  title_font)
+        plt.xlabel('x', title_font)
+        plt.ylabel('y', title_font)
+        ax.grid(False)
+        ax.axis('equal')
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min-buffer_size, y_max+buffer_size)
+
+        # Save and display
+        plt.show()
+        if file_name is not None:
+            plt.savefig(file_name)
+
+        return fig

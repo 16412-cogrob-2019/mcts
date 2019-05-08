@@ -20,7 +20,7 @@ from state import *
 class MctsNode:
     def __init__(self):
         
-        self.sub_map = rospy.Subscriber('/eep/data', String, self.cb_map)
+        self.sub_map = rospy.Subscriber('/eepp/path_data', String, self.cb_map)
         self.pub_command = rospy.Publisher('/mcts/command', cmsg.ActivityRequest, queue_size=1)
 
     def cb_map(self, msg):

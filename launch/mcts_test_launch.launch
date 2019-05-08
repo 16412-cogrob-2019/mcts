@@ -1,0 +1,16 @@
+<!-- -*- mode: XML -*- -->
+
+<launch>
+
+		<node pkg="mcts_action_selection"
+					type = "skeleton_code.py"
+					name = "mcts_node" />
+
+		<node pkg="mcts_action_selection"
+					type = "test_pub.py"
+					name = "test_eepp_publisher" />
+
+
+	<!-- Launch files 
+		<include file="/home/jacob/gitRepos/forceFeedback/src/optoforce/optoforce/launch/optoforce.launch"/> -->
+</launch>

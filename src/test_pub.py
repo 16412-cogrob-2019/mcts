@@ -36,11 +36,11 @@ class Test_Class:
 
 
         message = []
-        
+
         for i in range(numNodes):
             node = {}
             node["node_id"] = i
-            node["node_reward"] = self.reward_hc[i]
+            node["poi_reward"] = self.reward_hc[i]
             node["agent_id"] = self.has_agent_hc[i]
             # random position in a 10x10m space
             node["x"] = self.x_hc[i]

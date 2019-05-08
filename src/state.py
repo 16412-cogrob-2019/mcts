@@ -132,7 +132,7 @@ class KolumboState(AbstractState):
         for node in json_map:
             node_id = node['node_id']
             has_agent = node['agent_id']
-            reward = node['node_reward']
+            reward = node['poi_reward']
             x = node['x']
             y = node['y']
             connected_to = node['connectivity']
@@ -406,14 +406,14 @@ class KolumboState(AbstractState):
                   visited_reward_transparency=0.25, trajectory_width=0.06,
                   agent_length=0.2, agent_width=0.1):
         colors = {'reward': 'deepskyblue', 'boundary': 'firebrick'}
-        agent_color =      ['darkorange', 
-                            'seagreen', 
+        agent_color =      ['darkorange',
+                            'seagreen',
                             'darkorchid',
                             'gold',
                             'grey']
-        trajectory_color = ['peachpuff', 
-                            'palegreen', 
-                            'plum', 
+        trajectory_color = ['peachpuff',
+                            'palegreen',
+                            'plum',
                             'palegoldenrod',
                             'silver']
         z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
@@ -458,11 +458,11 @@ class KolumboState(AbstractState):
         lr_corner = (x_max, y_min)
         ul_corner = (x_min, y_max)
         ur_corner = (x_max, y_max)
-        for (c1, c2) in [(ll_corner, ul_corner), 
+        for (c1, c2) in [(ll_corner, ul_corner),
                          (ul_corner, ur_corner),
                          (ur_corner, lr_corner),
                          (lr_corner, ll_corner)]:
-            polygon_coords = rectangular_polygon_coords(c1, c2, buffer_size) 
+            polygon_coords = rectangular_polygon_coords(c1, c2, buffer_size)
             ax.add_patch(Polygon(xy=polygon_coords, closed=True,
                                  color=colors['boundary'],
                                  zorder=z['boundary']))
@@ -495,8 +495,8 @@ class KolumboState(AbstractState):
                 cur_loc_id = agent_history[i]
                 prev_loc = coords[prev_loc_id]
                 cur_loc = coords[cur_loc_id]
-                polygon_coords = rectangular_polygon_coords(prev_loc, cur_loc, 
-                                                            trajectory_width) 
+                polygon_coords = rectangular_polygon_coords(prev_loc, cur_loc,
+                                                            trajectory_width)
                 ax.add_patch(Polygon(xy=polygon_coords, closed=True,
                                      color=t_color, zorder=z['trajectory']))
 
@@ -516,9 +516,9 @@ class KolumboState(AbstractState):
                 x_e, y_e = coords[status[1]]
                 x_c = x_e - status[2] / cost * (x_e - x_s)
                 y_c = y_e - status[2] / cost * (y_e - y_s)
-                polygon_coords = rectangular_polygon_coords((x_s, y_s), 
-                                                            (x_c, y_c), 
-                                                            trajectory_width) 
+                polygon_coords = rectangular_polygon_coords((x_s, y_s),
+                                                            (x_c, y_c),
+                                                            trajectory_width)
                 ax.add_patch(Polygon(xy=polygon_coords, closed=True,
                                      color=t_color, zorder=z['trajectory']))
             if x_e == x_s:

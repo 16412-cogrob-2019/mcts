@@ -35,11 +35,10 @@ class MctsNode:
 
         self.kolumbo_mcts = MonteCarloSearchTree(self.kolumbo_state)
 
-        rospy.loginfo('looking for action')
-        action = self.kolumbo_mcts.search_for_actions(search_depth=2) # set to number of agents
-        rospy.loginfo('found action')
-        print((action[0]))
-        print((action[1]))
+        rospy.loginfo('looking for actions')
+        n_agents = rospy.get_param("n_agents")
+        action = self.kolumbo_mcts.search_for_actions(search_depth=n_agents) # set to number of agents
+        rospy.loginfo('found actions')
 
         path_to_publish = []
         agent_to_publish = []

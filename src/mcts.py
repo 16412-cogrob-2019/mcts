@@ -254,7 +254,7 @@ class MonteCarloSearchTree:
             max_action = random.choice(max_actions)
             child = node.children[max_action]
             return child.tot_reward / child.num_samples, [max_action]
-        best_reward = -math.inf
+        best_reward = -99999#-math.inf
         best_act_seq = []
         for action, child in node.children.items():
             child_reward, child_act_seq = self._search(child, search_depth - 1)

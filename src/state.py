@@ -6,7 +6,7 @@ from matplotlib.patches import Circle, FancyArrow, Rectangle, Polygon
 from matplotlib import transforms
 from abc import ABCMeta
 from copy import deepcopy
-
+import rospy
 
 class AbstractAction:
     __metaclass__ = ABCMeta
@@ -139,6 +139,9 @@ class KolumboState(AbstractState):
             costs = node['costs']
             paths = node['paths']
 
+            print(connected_to)
+            print(node_id)
+
             # add locations to graph
             self.add_location(node_id, reward, [x, y])
 
@@ -149,7 +152,6 @@ class KolumboState(AbstractState):
             # add if agent is there
             if has_agent != -1:
                 self.add_agent(node_id)
-
 
         return self
 

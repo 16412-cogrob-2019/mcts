@@ -46,7 +46,6 @@ class MctsNode:
         n_agents = rospy.get_param("n_agents",2)
         action = self.kolumbo_mcts.search_for_actions(search_depth=n_agents) # set to number of agents
         print(action[0])
-        print(action[1])
 
         # publish the message according to ActivityRequest
         path_to_publish = []

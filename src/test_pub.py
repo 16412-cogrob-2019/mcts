@@ -12,6 +12,9 @@ from std_msgs.msg import String
 
 class Test_Class:
     def __init__(self):
+        """
+        Define hardcoded message
+        """
         # publishers
         self.test_pub = rospy.Publisher('/eepp/path_data', String, queue_size = 10) # jsonified data
 
@@ -31,13 +34,15 @@ class Test_Class:
 
 ############################# Publisher functions ##############################
     def test_publish(self):
-
+        """
+        Publish hardcoded message
+        """
         numNodes = len(self.x_hc)
         message = []
 
         for i in range(numNodes):
             node = {}
-            node["node_id"] = i
+            node["poi_id"] = i
             node["poi_reward"] = self.reward_hc[i]
             node["agent_id"] = self.has_agent_hc[i]
             # random position in a 10x10m space
@@ -47,7 +52,6 @@ class Test_Class:
             node["costs"] = self.cost_hc[i]
             node["paths"] = self.paths_hc[i]
 
-
             message.append(node)
 
         # publish action
@@ -56,6 +60,9 @@ class Test_Class:
 
 ############################# Main #############################################
 def main():
+    """
+    Initiates ROS node, Test_Class class, and then loops in ROS at pub_rate hertz.
+    """
     # init ros node
     rospy.init_node('test', anonymous = True)
 

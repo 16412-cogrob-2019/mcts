@@ -12,43 +12,51 @@ import rospy
 from std_msgs.msg import String
 import mcts_action_selection.msg as cmsg
 
-
+# mcts libraries
 from mcts import *
 from state import *
 
 
 class MctsNode:
     def __init__(self):
-
+        """
+        Setup ROS subscribers and publishers
+        """
         self.sub_map = rospy.Subscriber('/eepp/path_data', String, self.cb_map)
-        self.pub_command = rospy.Publisher('/mcts/command', cmsg.ActivityRequest, queue_size=1)
+        self.pub_command = rospy.Publisher('/activity/post', cmsg.ActivityRequest, queue_size=1)
 
     def cb_map(self, msg):
-
-        action_msg = cmsg.ActivityRequest()
-
-        json_map = json.loads(msg.data)
-
+        """
+        Callback in response to self.sub_map that:
+        1) Resets the environment
+        2) Parses the incoming json message into a networkx graph
+        3) Performs MCTS to find actions for each agent
+        4) Publishes those actions according to the ActivityRequest message definition
+        """
+        # reset environment
         self.kolumbo_state = KolumboState()
 
+        # load message and parse
+        action_msg = cmsg.ActivityRequest()
+        json_map = json.loads(msg.data)
         self.kolumbo_state.json_parse_to_map(json_map)
 
+        # perform MCTS and find actions
         self.kolumbo_mcts = MonteCarloSearchTree(self.kolumbo_state)
-
-        rospy.loginfo('looking for actions')
-        n_agents = rospy.get_param("n_agents")
+        n_agents = rospy.get_param("n_agents",2)
         action = self.kolumbo_mcts.search_for_actions(search_depth=n_agents) # set to number of agents
-        rospy.loginfo('found actions')
 
+        # publish the message according to ActivityRequest
         path_to_publish = []
         agent_to_publish = []
         for node in json_map:
 
-            node_id = node['node_id']
+            node_id = node['poi_id']
             agent_id = node['agent_id']
             connected_to = node['connectivity']
             paths = node['paths']
 
+            # for each node/action, find the corresponding node and pass along its path/agent
             for act in action:
                 if (act._start_location == node_id) and (agent_id != -1):
                     for con_node, con_path in zip(connected_to, paths):
@@ -56,6 +64,7 @@ class MctsNode:
                             path_to_publish.append(copy.copy(con_path))
                             agent_to_publish.append(copy.copy(agent_id))
 
+        # for each agent/path, form the message and publish it
         for agent,path in zip(agent_to_publish, path_to_publish):
             action_msg.activity_id = agent
 
@@ -72,17 +81,16 @@ class MctsNode:
 
             plan_msg.wypts = plan
             action_msg.plns = [plan_msg]
-
             print(action_msg)
-
-            # self.kolumbo_state = self.kolumbo_state.execute_action(action)
-            # self.kolumbo_mcts.update_root(action)
 
             self.pub_command.publish(action_msg)
 
 
 ############################# Main #############################################
 def main():
+    """
+    Initiates ROS node, MctsNode class, and then loops in ROS at pub_rate hertz.
+    """
     # init ros node
     rospy.init_node('mcts_node', anonymous=True)
 
@@ -94,7 +102,7 @@ def main():
     rate = rospy.Rate(pub_rate)
 
     while (not rospy.is_shutdown()):
-        # do some stuff if necessary
+        # do some stuff if necessary, ours is blank as everything is in the callback
 
         # ros sleep (sleep to maintain loop rate)
         rate.sleep()

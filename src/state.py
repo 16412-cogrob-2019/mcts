@@ -130,7 +130,7 @@ class KolumboState(AbstractState):
         """ Parses incoming data to create new graph
         """
         for node in json_map:
-            node_id = node['node_id']
+            node_id = node['poi_id']
             has_agent = node['agent_id']
             reward = node['poi_reward']
             x = node['x']

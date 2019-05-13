@@ -3,7 +3,7 @@
 <launch>
 
 		<node pkg="mcts_action_selection"
-					type = "skeleton_code.py"
+					type = "mcts_node.py"
 					name = "mcts_node" />
 
 		<node pkg="mcts_action_selection"

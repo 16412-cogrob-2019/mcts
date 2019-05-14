@@ -75,7 +75,7 @@ def simulate(mcts_select_policy, mcts_expand_policy, mcts_rollout_policy,
         actions = mcts.search_for_actions(search_depth=3)
         time += 1
         print("Time step {0}".format(time))
-        for i in range(len(state.paths)):
+        for i in range(len(actions)):
             action = actions[i]
             print(action)
             state = state.execute_action(action)

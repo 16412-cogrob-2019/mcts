@@ -10,7 +10,7 @@ import rospy
 from std_msgs.msg import String
 
 from mcts import *
-from state import *
+from abs_state import *
 
 
 class MctsNode:

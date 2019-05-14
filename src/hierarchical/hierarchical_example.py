@@ -81,18 +81,16 @@ def simulate(initial_state: KolumboState) -> KolumboState:
 
     mcts = MonteCarloSearchTree(initial_state)
     state = initial_state.__copy__()
-    time = 0
     while not state.is_terminal:
-        actions = mcts.search_for_actions(search_depth=3)
+        actions = mcts.search_for_actions(search_depth=1)
         time = state.time_remains
         print("Time remaining: {0}".format(time))
-        #for i in range(len(actions)):
         action = actions[0]
         print(action)
         state = state.execute_action(action)
         mcts.update_root(action)
         if state.is_terminal:
-                break
+            break
     return state
 
 

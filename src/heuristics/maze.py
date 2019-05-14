@@ -1,4 +1,4 @@
-from state import AbstractAction, AbstractState
+from abs_state import AbstractAction, AbstractState
 import random
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -338,8 +338,9 @@ class MazeState(AbstractState):
 
 
         # Plotting
-        plt.title('AUV Trajectory \n Accumulated Reward: '
-                  + str(round(self.reward, 2)), title_font)
+        plt.title('Agents Trajectory \n Accumulated Reward: '
+                  + str(round(self.reward, 2)) + "\nRemaining time: {0}".
+                  format(self.time_remains), title_font)
         plt.xlabel('x', title_font)
         plt.ylabel('y', title_font)
         x_ticks = np.arange(self._environment.x_min, self._environment.x_max + 1

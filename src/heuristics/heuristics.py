@@ -146,13 +146,10 @@ class KolumboHeuristicsGenerator:
                             action.position)
         return new_state, new_action
 
-    def generate_training_data(self, num_train_samples: int = 1000,
+    def generate_training_data(self, num_train_samples: int = 100,
                                num_mcts_samples: int = 500,
-                               verbose: int = 100,
-                               data_file_name: str = 'heuristics/'
-                                                     'training_data.db',
-                               nn_params_file: str = 'heuristics/'
-                                                     'neural_net.db',
+                               verbose: int = 10,
+                               data_file_name: str = 'training_data.db',
                                time: int = 10,
                                reward_prob: float = 0.4,
                                reward_mean: float = 1.0,
@@ -171,8 +168,6 @@ class KolumboHeuristicsGenerator:
             progress
             When verbose is 0 or None, no information will be printed by console
         :param data_file_name: The file name to store data
-        :param nn_params_file: The file that sores the weights of the neural
-            network
         :param time: The number of time steps for an initial state
         :param reward_prob: The probability that a location has a reward
             at an initial state
@@ -183,16 +178,11 @@ class KolumboHeuristicsGenerator:
         :return: The data in numpy matrix form
         """
         try:
-            data = np.loadtxt(data_file_name, skiprows=0, delimiter=' ')
+            data = np.genfromtxt(data_file_name, delimiter=' ')
         except IOError:
             data = np.zeros((0, self.num_input_units + 1))
 
         model = self.init_neural_network()
-        try:
-            model.load_weights(nn_params_file)
-            rollout = self.get_rollout_policy(model)
-        except OSError:
-            rollout = random_rollout_policy
 
         if verbose:
             print("Training set generation: {0}({1}) samples".
@@ -207,7 +197,7 @@ class KolumboHeuristicsGenerator:
             rewards = []
             mcts = MonteCarloSearchTree(initial_state=state,
                                         samples=num_mcts_samples,
-                                        rollout_policy=rollout)
+                                        rollout_policy=random_rollout_policy)
             while not state.is_terminal:
                 new_actions = mcts.search_for_actions(
                     search_depth=self._num_agents)
@@ -306,29 +296,24 @@ class KolumboHeuristicsGenerator:
                                   if max_reward - reward < max_tol]
                     state = state.execute_action(random.choice(candidates))
             return state.reward
-
         return rollout_policy
 
-    def init_neural_network(self, num_layers: int = 15) -> Sequential:
+    def init_neural_network(self, num_layers: int = 10) -> Sequential:
         """ Initialize a neural network without training
         :param num_layers: The number of hidden layers with 10 units
         :return: The neural network
         """
         model = Sequential()
-        model.add(Dense(50, input_dim=self.num_input_units,
-                        activation='sigmoid'))
-        model.add(Dense(50, activation='relu'))
+        model.add(Dense(50, activation='relu', input_dim=self.num_input_units))
         for _ in range(num_layers):
             model.add(Dense(10, activation='relu'))
         model.add(Dense(1, activation='relu'))
         return model
 
     def train_neural_network(self, data: np.array = None,
-                             data_file_name: str = 'heuristics/'
-                                                   'training_data.db',
-                             output_file_name: str = 'heuristics/'
-                                                     'neural_net.db',
-                             num_layers: int = 15,
+                             data_file_name: str = 'training_data.db',
+                             output_file_name: str = 'neural_net.db',
+                             num_layers: int = 10,
                              epochs: int = 25, batch_size: int = 100,
                              verbose: bool = False,
                              validation_split: float = 0.1):
@@ -364,10 +349,12 @@ class KolumboHeuristicsGenerator:
 
 
 if __name__ == '__main__':
+    # One iteration
     size = 9
-    num_agents = 3
+    num_agents = 2
+    layers = 3
     trainer = KolumboHeuristicsGenerator(size, num_agents)
     trainer.generate_training_data()
-    trainer.train_neural_network()
-
+    trainer.train_neural_network(output_file_name='heuristics/neural_net.db',
+                                 data_file_name='heuristics/training_data.db')
 

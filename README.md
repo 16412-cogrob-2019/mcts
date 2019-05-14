@@ -25,7 +25,7 @@ In `src/heuristics/compare.py`, we compare the results between the rollout polic
 
 
 ## Hierachical Model
-Using a modified version of the base model (`src/hierachical/hierarchical_state.py`) and the base MCTS algorithm (`src/hierachical/hierarchical_mcts.py`), a hierachical model is built which considers a mothership and a tethered AUV. The set of primitive actions in this environment includes the AUV motions from the base model, as well as the (much faster) motions of the mothership between search regions. The macro-actions in our model represent the deployment of the AUV from the mothership using different rollout heuristics. 
+Using a modified version of the base model (`src/hierachical/hierarchical_state.py`) and the base MCTS algorithm (`src/hierachical/hierarchical_mcts.py`), a hierachical model is built which considers a mothership and a tethered AUV. The set of primitive actions in this environment includes the AUV motions from the base model, as well as the motions of the mothership between search regions. The macro-actions in our model represent the deployment of the AUV from the mothership using different rollout policies. 
 
 Execute `src/hierachical/hierarchical_example.py` for a demonstration of a mothership and tethered AUV planning their actions while exploiting the problem's hierarchical structure. You will see two examples of tethered AUV deployments, which depict the primitive actions that compose a single macro-action. Then, you will see an example of the mothership's motion between regions, which depicts a sequence of macro-actions.
 

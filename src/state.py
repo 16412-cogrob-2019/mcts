@@ -327,7 +327,8 @@ class KolumboState(AbstractState):
                                          time_remains - time_elapsed)
             else:
                 self._statuses[agent] = (end_loc, end_loc, 0.0)
-                self._histories[agent].append(end_loc)
+                if time_elapsed != 0:
+                    self._histories[agent].append(end_loc)
         self._time_remains -= time_elapsed
         return self
 
@@ -514,6 +515,11 @@ class KolumboState(AbstractState):
                 x_e, y_e = coords[status[1]]
                 x_c = x_e - status[2] / cost * (x_e - x_s)
                 y_c = y_e - status[2] / cost * (y_e - y_s)
+                polygon_coords = rectangular_polygon_coords((x_s, y_s), 
+                                                            (x_c, y_c), 
+                                                            trajectory_width) 
+                ax.add_patch(Polygon(xy=polygon_coords, closed=True,
+                                     color=t_color, zorder=z['trajectory']))
             if x_e == x_s:
                 dx, dy = 0, agent_length * (1 if y_e >= y_s else -1)
             elif y_e == y_s:
@@ -525,11 +531,6 @@ class KolumboState(AbstractState):
                 dx = dy * asp_ratio
             x_start = x_c - dx / 2
             y_start = y_c - dy / 2
-            polygon_coords = rectangular_polygon_coords((x_s, y_s), 
-                                                        (x_c, y_c), 
-                                                        trajectory_width) 
-            ax.add_patch(Polygon(xy=polygon_coords, closed=True,
-                                 color=t_color, zorder=z['trajectory']))
             ax.add_patch(FancyArrow(x=x_start, y=y_start,
                                     dx=dx, dy=dy, fc=a_color,
                                     width=agent_width,
@@ -539,7 +540,6 @@ class KolumboState(AbstractState):
                                     length_includes_head=True))
 
         # Plotting
-        print(self._time_remains)
         plt.title("Agents Trajectories \nAccumulated Reward: {0}\n"
                   "Time Remaining: {1}"
                   .format(sum(reward for loc, reward in

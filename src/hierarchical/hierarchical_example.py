@@ -1,5 +1,5 @@
-from state import *
-from mcts import *
+from hierarchical_state import *
+from hierarchical_mcts import *
 
 
 def line(start: (int, int), increment: (int, int), length: int) -> set:

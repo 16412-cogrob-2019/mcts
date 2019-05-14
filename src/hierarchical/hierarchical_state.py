@@ -7,9 +7,6 @@ from matplotlib import transforms
 from abc import ABCMeta
 from copy import deepcopy
 
-#from helpers import simulate
-#from mcts import *
-
 
 class AbstractAction:
     __metaclass__ = ABCMeta

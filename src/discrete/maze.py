@@ -1,4 +1,4 @@
-from state import *
+from abs_state import *
 import random
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure

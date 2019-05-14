@@ -1015,7 +1015,12 @@ class FalkorState(AbstractState):
         max_reward = max(rewards.values())
         non_zero_rewards = [reward for reward in rewards.values()
                             if reward != 0]
+#<<<<<<< HEAD
         min_reward = min(rewards.values())
+#=======
+#        min_reward = 0 if non_zero_rewards == [] else min(non_zero_rewards)
+#        min_reward = 0 if max_reward == min_reward else min_reward
+#>>>>>>> 21c52e097d1b3f69807a36a54405afcb52f2c8c2
         for node, location in coords.items():
             reward = self.reward_at_location(node)
             reward_radius = max_reward_radius #((reward - min_reward) *

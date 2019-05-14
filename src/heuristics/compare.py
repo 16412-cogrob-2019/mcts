@@ -1,4 +1,4 @@
-from heuristics.heuristics import *
+from heuristics import *
 from mcts import *
 import numpy as np
 
@@ -7,7 +7,7 @@ if __name__ == '__main__':
     neural_net_model_file = 'neural_net.db'
     res_file = 'compare.db'
     num_trials = 100
-    num_samples = 400
+    num_samples = 50
 
     trainer = KolumboHeuristicsGenerator()
     model = trainer.init_neural_network()

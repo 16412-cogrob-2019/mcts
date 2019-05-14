@@ -19,7 +19,7 @@ We have a more realistic continuous-time model, where locations are modeled as n
 We implemented a neural network that estimates the expected reward, and the estimation is used in a modified rollout policy.
 In `src/heuristics/heuristics.py`, MCTS generates training data for the neural network, and the neural network updates its weights. Note: running the script may take hours.
 
-We have a trained neural network with its data in `src/heuristics/neural_net.db`. To run an example using it, execute `src/heuristics/example.py`. Note: running the neural network rollout policy takes longer than the default random rollout policy; so, if the program does not finish quickly, you can reduce the number of samples.
+We have a trained neural network with its data in `src/heuristics/neural_net.db`. To run an example using it, execute `src/heuristics/example.py`. Note: running the neural network rollout policy takes longer than the default random rollout policy; if the program takes too long, you can reduce the number of samples.
 
 In `src/heuristics/compare.py`, we compare the results between the rollout policies. Note: running the script may take very long. Reduce the number of samples if needed.
 

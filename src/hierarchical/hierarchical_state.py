@@ -468,7 +468,7 @@ class KolumboState(AbstractState):
         max_reward = max(rewards.values())
         non_zero_rewards = [reward for reward in rewards.values()
                             if reward != 0]
-        min_reward = 0 if non_zero_rewards == [] else min(non_zero_rewards)
+        min_reward = min(rewards.values())
         for node, location in coords.items():
             reward = self.reward_at_location(node)
             reward_radius = ((reward - min_reward) *
@@ -552,7 +552,7 @@ class KolumboState(AbstractState):
         ax.set_ylim(y_min - buffer_size, y_max + buffer_size)
 
         # Save and display
-        plt.show()
+        #plt.show()
         if file_name is not None:
             plt.savefig(file_name)
 
@@ -604,7 +604,7 @@ class FalkorAction(AbstractAction):
 
 
 class FalkorState(AbstractState):
-    def __init__(self, environment=nx.DiGraph(), time_remains=10.0):
+    def __init__(self, environment=nx.DiGraph(), time_remains=10.0, region_types=None):
         # type: (nx.DiGraph, float) -> None
         """ Create a state of the Kolumbo volcano exploration mission
             statuses[agent_id] describes the moving condition of an agent in the
@@ -622,6 +622,7 @@ class FalkorState(AbstractState):
         self._environment = environment
         self._time_remains = time_remains
         self._agent_id = 0  # The index for the agent that should take action
+        self._region_types = region_types
 
     def __copy__(self):
         # type: () -> FalkorState
@@ -634,6 +635,7 @@ class FalkorState(AbstractState):
         new_state._deploy_histories = deepcopy(self._deploy_histories)
         new_state._statuses = deepcopy(self._statuses)
         new_state._terminal_locations = deepcopy(self._terminal_locations)
+        new_state._region_types = self._region_types
         return new_state
 
     def __str__(self):
@@ -875,6 +877,11 @@ class FalkorState(AbstractState):
                    for location in history)
 
     @property
+    def region_types(self):
+        return self._region_types
+    
+
+    @property
     def deployed(self):
         # type: () -> set
         """ The set of all obtaind rewards_at_all_locations
@@ -944,12 +951,13 @@ class FalkorState(AbstractState):
         new_state.evolve()
         return new_state
 
+
     def visualize(self, file_name=None, fig_size=(8, 6.5), buffer_size=0.10,
                   max_reward_radius=0.35, min_reward_radius=0.15,
                   visited_reward_transparency=0.25, trajectory_width=0.06,
                   agent_length=0.2, agent_width=0.1):
-        colors = {'reward': 'deepskyblue', 'boundary': 'firebrick'}
-        agent_color = ['darkorange', 'seagreen', 'darkorchid', 'gold', 'grey']
+        colors = {'reward': 'deepskyblue', 'boundary': 'firebrick', 'R': 'firebrick', 'C': 'darkblue'}
+        agent_color = ['seagreen', 'darkorchid', 'gold', 'grey']
         trajectory_color = ['peachpuff', 'palegreen', 'plum', 'palegoldenrod',
                             'silver']
         z = {'reward': 1, 'trajectory': 2, 'boundary': 3, 'agent': 4}
@@ -1007,15 +1015,19 @@ class FalkorState(AbstractState):
         max_reward = max(rewards.values())
         non_zero_rewards = [reward for reward in rewards.values()
                             if reward != 0]
-        min_reward = 0 if non_zero_rewards == [] else min(non_zero_rewards)
+        min_reward = min(rewards.values())
         for node, location in coords.items():
             reward = self.reward_at_location(node)
-            reward_radius = ((reward - min_reward) *
-                             (max_reward_radius - min_reward_radius) /
-                             (max_reward - min_reward) + min_reward_radius)
+            reward_radius = max_reward_radius #((reward - min_reward) *
+                             #(max_reward_radius - min_reward_radius) /
+                             #(max_reward - min_reward) + min_reward_radius)
             x, y = location
+            print(self.region_types)
+            print(location)
+            print(self.region_types[location])
+            print(colors[self.region_types[location]])
             ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
-                                facecolor=colors['reward'],
+                                facecolor=colors[self.region_types[location]],
                                 alpha=(visited_reward_transparency
                                        if node in self.visited else 1.0),
                                 zorder=z['reward']))

@@ -289,12 +289,6 @@ class MazeState(AbstractState):
         # Initialize the figure
         fig = plt.figure(figsize=fig_size)
         ax = fig.add_subplot(111)
-        plt.hlines(y=range(self._environment.y_min, self._environment.y_max + 1)
-                   , xmin=self._environment.x_min, xmax=self._environment.x_max,
-                   color='k', linewidth=grid_width, zorder=0)
-        plt.vlines(x=range(self._environment.x_min, self._environment.x_max + 1)
-                   , ymin=self._environment.y_min, ymax=self._environment.y_max,
-                   color='k', linewidth=grid_width, zorder=0)
 
         # Plot obstacles
         for i, j in self._environment.obstacles:

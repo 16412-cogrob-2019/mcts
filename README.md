@@ -1,7 +1,7 @@
 # MCTS for Kolumbo Volcano Exploration
 
 The repo, except having the base MCTS algorithm and Kolumbo exploration problem model, has several extensions - 
-a neural network extension to rollout policy, a decentralized version, a hierarchical model which includes the mothership in the problem, and a ROS integration interface. 
+a neural network extension to rollout policy, a hierarchical model which includes the mothership in the problem, and a ROS integration interface. 
 
 ## The Base MCTS
 We are coordinating multiple agents to explore valuable areas around the Kolumbo Volcano. The estimated values of locations

@@ -81,10 +81,10 @@ class MctsNode:
                 plan.append(wp_msg)
 
             plan_msg.wypts = plan
-            action_msg.plns = [plan_msg]
+            action_msg.plns.append(plan_msg)
             print(action_msg)
 
-            self.pub_command.publish(action_msg)
+        self.pub_command.publish(action_msg)
 
 
 ############################# Main #############################################

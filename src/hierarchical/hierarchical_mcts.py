@@ -77,7 +77,7 @@ class Node(object):
         act = None
         for action, node in self.children.items():
             if node == child:
-                child._parent = None
+                #child._parent = None
                 act = action
         if act:
             del self.children[act]
@@ -146,6 +146,36 @@ def random_rollout_policy(state):
         state = state.execute_action(action)
     return state.reward
 
+def clone_rollout_policy(state, meta_action, meta_action_root, depth):
+    # type: (AbstractState) -> float
+    """ The cloning rollout policy selects the actions the meta-action tree would have taken
+        at a given depth.
+    :param state: The starting state
+    :param meta_action: The meta-action name
+    :param meta_action_root: The root node of the meta-action search tree over primitives
+    :param depth: the depth to which the search has already gone
+    :return: The reward at the terminal node
+    """
+
+    # 
+
+    cur = meta_action_root
+
+    # search meta action policy to appropriate depth
+    for i in range(depth):
+        if len(cur.children) == 0:
+            return random_rollout_policy(cur.state)
+        action = select(cur)[0]
+        cur =cur.children[action]
+
+    # follow meta action policy from depth to termination
+    while not state.is_terminal:
+        if len(cur.children) == 0:
+            return random_rollout_policy(cur.state)
+        action = select(cur)[0]
+        state = state.execute_action(action)
+        cur = cur.children[action]
+    return state.reward
 
 def backpropagate(node, reward=0.0):
     # type: (Node, float) -> None
@@ -163,7 +193,8 @@ def backpropagate(node, reward=0.0):
 def execute_round(root, max_tree_depth=15,
                   tree_select_policy=select, tree_expand_policy=expand,
                   rollout_policy=random_rollout_policy,
-                  backpropagate_method=backpropagate):
+                  backpropagate_method=backpropagate,
+                  meta_action=None, meta_action_root=None, depth_cur=0):
     # type: (Node, int, callable, callable, callable, callable) -> None
     """ Perform selection, expansion, simulation and backpropagation with
         one sample
@@ -192,15 +223,20 @@ def execute_round(root, max_tree_depth=15,
         act, cur = tree_select_policy(cur, exploration_const=1.0)
     simulation_node = tree_expand_policy(
         cur) if max_tree_depth > cur.depth else cur
-    reward = rollout_policy(simulation_node.state)
+
+    if meta_action and random.random() < 0.5: # tunable parameter adjusts meta policy following rate
+        reward = clone_rollout_policy(simulation_node.state, meta_action, meta_action_root, depth_cur)
+    else:
+        reward = rollout_policy(simulation_node.state)
+
     backpropagate_method(simulation_node, reward)
 
 
 class MonteCarloSearchTree:
-    def __init__(self, initial_state, samples=1000, max_tree_depth=10,
+    def __init__(self, initial_state, samples=1000, max_tree_depth=20,
                  tree_select_policy=select, tree_expand_policy=expand,
                  rollout_policy=random_rollout_policy,
-                 backpropagate_method=backpropagate):
+                 backpropagate_method=backpropagate, meta_action=None, meta_action_root=None):
         # type: (AbstractState, int, int, callable, callable, callable, callable) -> None
         """ Create a MonteCarloSearchTree object
         :param initial_state: The initial state
@@ -231,7 +267,10 @@ class MonteCarloSearchTree:
         self._rollout_policy = rollout_policy
         self._back_propagate_policy = backpropagate_method
         self._root = Node(initial_state)
+        self._depth_cur = 0
         self._max_tree_depth = max_tree_depth
+        self._meta_action = meta_action
+        self._meta_action_root=meta_action_root
 
     def _search(self, node, search_depth=1):
         # type: (Node, int) -> (float, list)
@@ -240,6 +279,7 @@ class MonteCarloSearchTree:
                      sequence of actions that leads to the optimal child node
         """
         if not node.children or search_depth == 0:
+            print('err')    
             return node.tot_reward / node.num_samples, []
         elif search_depth == 1:
             max_val = -float('inf')
@@ -278,7 +318,10 @@ class MonteCarloSearchTree:
                           tree_select_policy=self._tree_select_policy,
                           tree_expand_policy=self._tree_expand_policy,
                           rollout_policy=self._rollout_policy,
-                          backpropagate_method=self._back_propagate_policy)
+                          backpropagate_method=self._back_propagate_policy,
+                          meta_action=self._meta_action,
+                          meta_action_root=self._meta_action_root,
+                          depth_cur=self._depth_cur)
         return self._search(self._root, search_depth)[1]
 
     def update_root(self, action):
@@ -291,6 +334,13 @@ class MonteCarloSearchTree:
             new_root = self._root.children[action]
         else:
             new_root = self._root.add_child(action)
-        self._root.remove_child(new_root)
+        self._root.remove_child(new_root) # remove ?????
         self._root = new_root
+        self._depth_cur += 1
         return self
+
+    def get_top_root(self):
+        toproot = self._root
+        while toproot.parent:
+            toproot = toproot.parent
+        return toproot

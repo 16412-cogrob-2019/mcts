@@ -1,4 +1,4 @@
-from hierarchical_state import *
+from hierarchical_state_integrated import *
 from hierarchical_mcts import *
 import random
 
@@ -13,6 +13,9 @@ def circle(center: (int, int), radius: int = 1):
                 for i in range(center[0] - radius, center[0] + radius + 1)
                 for j in range(center[1] - radius, center[1] + radius + 1)
                 if (i - center[0]) ** 2 + (j - center[1]) ** 2 <= radius ** 2])
+
+def to_numbered_state(loc, xlim, ylim):
+    return loc[0] * xlim[1] + loc[1]
 
 
 def hierarchical_example():
@@ -31,7 +34,7 @@ def hierarchical_example():
             else:
                 ridge_targets[(i, j)] = 0
 
-    ridge_state = KolumboState(time_remains=15)
+    ridge_state = KolumboState(time_remains=5)
     target_locs = list(ridge_targets.keys())
     for i in range(len(target_locs)):
         ridge_state.add_location(i, ridge_targets[target_locs[i]], target_locs[i])
@@ -63,7 +66,7 @@ def hierarchical_example():
                 caldera_targets[(i, j)] = 0
     #caldera_env = KolumboEnvironment(xlim=(0, 20), ylim=(0, 20), obstacles={},
     #                      targets=caldera_targets, is_border_obstacle_filled=True)
-    caldera_state = KolumboState(time_remains=15)
+    caldera_state = KolumboState(time_remains=5)
     target_locs = [(i, j) for i in range(xlim[0], xlim[1]) for j in range(xlim[0], xlim[1])]
     for i in range(len(target_locs)):
         print(i, caldera_targets[target_locs[i]], target_locs[i])
@@ -85,21 +88,30 @@ def hierarchical_example():
 
 
 
-    falkor_regions = {(1, 1): 'R', (1, 2): 'R', (1, 3): 'R', (1, 4): 'R',
-                    (2, 1): 'R', (2, 2): 'C', (2, 3): 'C', (2, 4): 'R',
-                    (3, 1): 'R', (3, 2): 'C', (3, 3): 'C', (3, 4): 'R',
-                    (4, 1): 'R', (4, 2): 'R', (4, 3): 'R', (4, 4): 'R'}
+    xlimf = (0, 4)
+    ylimf = (0, 4)
 
-    falkor_targets = {(1, 1): 'R', (1, 2): 'R', (1, 3): 'R', (1, 4): 'R',
-                    (2, 1): 'R', (2, 2): 'C', (2, 3): 'C', (2, 4): 'R',
-                    (3, 1): 'R', (3, 2): 'C', (3, 3): 'C', (3, 4): 'R',
-                    (4, 1): 'R', (4, 2): 'R', (4, 3): 'R', (4, 4): 'R'}
+    falkor_regions = { (0, 0): 'R', (0, 1): 'R', (0, 2): 'R', (0, 3): 'R',
+                    (1, 0): 'R', (1, 1): 'C', (1, 2): 'C', (1, 3): 'R',
+                    (2, 0): 'R', (2, 1): 'C', (2, 2): 'C', (2, 3): 'R',
+                    (3, 0): 'R', (3, 1): 'R', (3, 2): 'R', (3, 3): 'R'}
+
+    falkor_targets = { (0, 0): 'R', (0, 1): 'R', (0, 2): 'R', (0, 3): 'R',
+                    (1, 0): 'R', (1, 1): 'C', (1, 2): 'C', (1, 3): 'R',
+                    (2, 0): 'R', (2, 1): 'C', (2, 2): 'C', (2, 3): 'R',
+                    (3, 0): 'R', (3, 1): 'R', (3, 2): 'R', (3, 3): 'R'}
 
     #falkor_env = FalkorEnvironment(xlim=(1, 3), ylim=(1, 3), obstacles={},
     #                      feature_map=falkor_targets, is_border_obstacle_filled=True, primitive_states={'C': caldera_state, 'R': ridge_state}, 
     #                      simulation_function = simulate)
 
     primitive_states = {'C': caldera_state, 'R': ridge_state}
+    region_states = {}
+    region_types = {}
+    for loc in falkor_regions.keys():
+        region_states[to_numbered_state(loc, xlimf, ylimf)] = primitive_states[falkor_regions[loc]].__copy__()
+    for loc in falkor_regions.keys():
+        region_types[to_numbered_state(loc, xlimf, ylimf)] = falkor_regions[loc]
     meta_action_rewards = {'C': 0, 'R': 0}
 
     for meta_action in primitive_states.keys():
@@ -114,7 +126,7 @@ def hierarchical_example():
 
 
     print(falkor_regions)
-    falkor_state = FalkorState(time_remains=70, region_types=falkor_regions)
+    falkor_state = FalkorState(time_remains=25, region_types=region_types, region_states=region_states)
 
     target_locs = list(falkor_targets.keys())
     for i in range(len(target_locs)):

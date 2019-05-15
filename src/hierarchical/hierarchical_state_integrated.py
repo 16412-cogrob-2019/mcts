@@ -7,6 +7,7 @@ from matplotlib import transforms
 from abc import ABCMeta
 from copy import deepcopy
 
+from hierarchical_mcts import Node, MonteCarloSearchTree
 
 class AbstractAction:
     __metaclass__ = ABCMeta
@@ -610,7 +611,7 @@ class FalkorAction(AbstractAction):
 
 
 class FalkorState(AbstractState):
-    def __init__(self, environment=nx.DiGraph(), time_remains=10.0, region_types=None):
+    def __init__(self, environment=nx.DiGraph(), time_remains=10.0, region_types=None, region_states=None):
         # type: (nx.DiGraph, float) -> None
         """ Create a state of the Kolumbo volcano exploration mission
             statuses[agent_id] describes the moving condition of an agent in the
@@ -629,6 +630,12 @@ class FalkorState(AbstractState):
         self._time_remains = time_remains
         self._agent_id = 0  # The index for the agent that should take action
         self._region_types = region_types
+        self._region_states = region_states
+        self._meta_roots = {}
+        self._deploy_reward = 0
+        if self._region_states:
+            for loc in self._region_states.keys():
+                self._meta_roots[self.region_types[loc]] = Node(self._region_states[loc])
 
     def __copy__(self):
         # type: () -> FalkorState
@@ -642,6 +649,9 @@ class FalkorState(AbstractState):
         new_state._statuses = deepcopy(self._statuses)
         new_state._terminal_locations = deepcopy(self._terminal_locations)
         new_state._region_types = self._region_types
+        new_state._region_states = self._region_states
+        new_state._meta_roots = self._meta_roots
+        new_state._deploy_reward = self._deploy_reward
         return new_state
 
     def __str__(self):
@@ -854,6 +864,7 @@ class FalkorState(AbstractState):
             Update the time remaining, histories, statuses, and the index of the
             agent that should take the next action
         """
+        #sprint('evolving meta')
         if self.is_terminal:
             return self
         self._agent_id = min(self.nonterminal_agents,
@@ -869,10 +880,37 @@ class FalkorState(AbstractState):
                 self._statuses[agent] = (end_loc, end_loc, 0.0)
                 if time_elapsed != 0:
                     self._histories[agent].append(end_loc)
+
                     if is_deploy:
+                        # perform meta action via MCTS
+                        initial_state = self._region_states[end_loc]
+                        mcts = MonteCarloSearchTree(initial_state, meta_action=self._region_types[end_loc], 
+                                                    meta_action_root=self._meta_roots[self._region_types[end_loc]])
+                        state = initial_state.__copy__()
+                        while not state.is_terminal:
+                            actions = mcts.search_for_actions(search_depth=1)
+                            time = state.time_remains
+                            #print("Time remaining: {0}".format(time))
+                            action = actions[0]
+                            #print(action)
+                            state = state.execute_action(action)
+                            mcts.update_root(action)
+                            if state.is_terminal:
+                                break
+                        top_root = mcts.get_top_root()
+                        print('done')
+                        self._meta_roots[self._region_types[end_loc]] = top_root
+                        reward = state.reward
+
+                        if end_loc not in self._deploy_histories[agent]:
+                            self._deploy_reward += reward
                         self._deploy_histories[agent].append(end_loc)
+
+                        print(reward, self._deploy_reward)
+                        
         self._time_remains -= time_elapsed
         return self
+
 
     @property
     def visited(self):
@@ -916,9 +954,10 @@ class FalkorState(AbstractState):
         """
         if not self.is_terminal or not self.is_recovered:
             return 0.0
-        return sum(
-            reward for loc, reward in self.rewards_at_all_locations.items() if
-            loc in self.deployed)
+        #return sum(
+        #    reward for loc, reward in self.rewards_at_all_locations.items() if
+        #    loc in self.deployed)
+        return self._deploy_reward
 
     @property
     def is_terminal(self):
@@ -941,7 +980,7 @@ class FalkorState(AbstractState):
         return [FalkorAction(self._agent_id, start_loc, path[1],
                               self.cost_at_path(*path))
                 for path in self.outgoing_paths(start_loc)] + \
-                    [FalkorAction(self._agent_id, start_loc, start_loc, 15, is_deploy_action=True)]
+                    [FalkorAction(self._agent_id, start_loc, start_loc, 5, is_deploy_action=True)]
 
     def execute_action(self, action):
         # type: (FalkorAction) -> FalkorState
@@ -1029,12 +1068,12 @@ class FalkorState(AbstractState):
                              #(max_reward_radius - min_reward_radius) /
                              #(max_reward - min_reward) + min_reward_radius)
             x, y = location
-            print(self.region_types)
-            print(location)
-            print(self.region_types[location])
-            print(colors[self.region_types[location]])
+            #print(self.region_types)
+            #print(location)
+            #print(self.region_types[location[0] * 4 + location[1]])
+            #print(colors[self.region_types[location[0] * 4 + location[1]]])
             ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
-                                facecolor=colors[self.region_types[location]],
+                                facecolor=colors[self.region_types[location[0] * 4 + location[1]]],
                                 alpha=(visited_reward_transparency
                                        if node in self.visited else 1.0),
                                 zorder=z['reward']))
@@ -1098,9 +1137,10 @@ class FalkorState(AbstractState):
         # Plotting
         plt.title("Agents Trajectories \nAccumulated Reward: {0}\n"
                   "Time Remaining: {1}"
-                  .format(sum(reward for loc, reward in
-                              self.rewards_at_all_locations.items() if
-                              loc in self.visited), self._time_remains),
+                  .format(self._deploy_reward, self.time_remains),
+                  #.format(sum(reward for loc, reward in
+                  #            self.rewards_at_all_locations.items() if
+                  #            loc in self.visited), self._time_remains),
                   title_font)
         plt.xlabel('x', title_font)
         plt.ylabel('y', title_font)

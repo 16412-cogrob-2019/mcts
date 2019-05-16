@@ -631,12 +631,13 @@ class FalkorState(AbstractState):
         self._agent_id = 0  # The index for the agent that should take action
         self._region_types = region_types
         self._region_states = region_states
-        self._meta_roots = {}
+        #self._meta_roots = {}
+        self._meta_trees = {}
         self._deploy_reward = 0
         if self._region_states:
             for loc in self._region_states.keys():
-                self._meta_roots[self.region_types[loc]] = Node(self._region_states[loc])
-
+                #self._meta_roots[self.region_types[loc]] = Node(self._region_states[loc])
+                self._meta_trees[self.region_types[loc]] = MonteCarloSearchTree(self._region_states[loc], samples=100)
     def __copy__(self):
         # type: () -> FalkorState
         """ Make a copy of the state; histories, statuses and terminal_locations
@@ -644,13 +645,14 @@ class FalkorState(AbstractState):
         """
         new_state = FalkorState(environment=self._environment,
                                  time_remains=self._time_remains)
-        new_state._histories = deepcopy(self._histories)
+        new_state._histories = deepcopy(self.   _histories)
         new_state._deploy_histories = deepcopy(self._deploy_histories)
         new_state._statuses = deepcopy(self._statuses)
         new_state._terminal_locations = deepcopy(self._terminal_locations)
         new_state._region_types = self._region_types
         new_state._region_states = self._region_states
-        new_state._meta_roots = self._meta_roots
+        #new_state._meta_roots = self._meta_roots
+        new_state._meta_trees = self._meta_trees
         new_state._deploy_reward = self._deploy_reward
         return new_state
 
@@ -884,8 +886,9 @@ class FalkorState(AbstractState):
                     if is_deploy:
                         # perform meta action via MCTS
                         initial_state = self._region_states[end_loc]
+                        '''
                         mcts = MonteCarloSearchTree(initial_state, meta_action=self._region_types[end_loc], 
-                                                    meta_action_root=self._meta_roots[self._region_types[end_loc]])
+                                                    meta_action_root=self._meta_roots[self._region_types[end_loc]], samples=1)
                         state = initial_state.__copy__()
                         while not state.is_terminal:
                             actions = mcts.search_for_actions(search_depth=1)
@@ -902,12 +905,33 @@ class FalkorState(AbstractState):
                         self._meta_roots[self._region_types[end_loc]] = top_root
                         reward = state.reward
 
+                        '''
+                        #mcts = self._meta_trees[self._region_types[end_loc]]     # ENABLES HIERARCHICAL PLANNING WITH META ACTIONS
+                        mcts = MonteCarloSearchTree(initial_state, samples=100)
+                        state = initial_state.__copy__()
+                        while not state.is_terminal:
+                            actions = mcts.search_for_actions(search_depth=1)
+                            time = state.time_remains
+                            #print("Time remaining: {0}".format(time))
+                            #print(actions)
+                            action = actions[0]
+                            #print(action)
+                            state = state.execute_action(action)
+                            mcts.update_root(action)
+                            if state.is_terminal:
+                                break
+                        #top_root = mcts.get_top_root()
+                        print('done')
+                        #self._meta_trees[self._region_types[end_loc]] = mcts
+                        reward = state.reward
+
+
                         if end_loc not in self._deploy_histories[agent]:
                             self._deploy_reward += reward
                         self._deploy_histories[agent].append(end_loc)
 
                         print(reward, self._deploy_reward)
-                        
+
         self._time_remains -= time_elapsed
         return self
 
@@ -980,7 +1004,7 @@ class FalkorState(AbstractState):
         return [FalkorAction(self._agent_id, start_loc, path[1],
                               self.cost_at_path(*path))
                 for path in self.outgoing_paths(start_loc)] + \
-                    [FalkorAction(self._agent_id, start_loc, start_loc, 5, is_deploy_action=True)]
+                    [FalkorAction(self._agent_id, start_loc, start_loc, 10, is_deploy_action=True)]
 
     def execute_action(self, action):
         # type: (FalkorAction) -> FalkorState

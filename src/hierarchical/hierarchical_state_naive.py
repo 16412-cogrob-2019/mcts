@@ -831,7 +831,7 @@ class FalkorState(AbstractState):
         """ Add an agent at the specified location
         """
         self._histories.append([location_id])
-        self._deploy_histories.append([location_id])
+        self._deploy_histories.append([])
         self._statuses.append((location_id, location_id, 0.0))
         return self
 
@@ -941,7 +941,7 @@ class FalkorState(AbstractState):
         return [FalkorAction(self._agent_id, start_loc, path[1],
                               self.cost_at_path(*path))
                 for path in self.outgoing_paths(start_loc)] + \
-                    [FalkorAction(self._agent_id, start_loc, start_loc, 15, is_deploy_action=True)]
+                    [FalkorAction(self._agent_id, start_loc, start_loc, 10, is_deploy_action=True)]
 
     def execute_action(self, action):
         # type: (FalkorAction) -> FalkorState
@@ -1029,10 +1029,10 @@ class FalkorState(AbstractState):
                              #(max_reward_radius - min_reward_radius) /
                              #(max_reward - min_reward) + min_reward_radius)
             x, y = location
-            print(self.region_types)
-            print(location)
-            print(self.region_types[location])
-            print(colors[self.region_types[location]])
+            #print(self.region_types)
+            #print(location)
+            #print(self.region_types[location])
+            #print(colors[self.region_types[location]])
             ax.add_patch(Circle(xy=(x, y), radius=reward_radius,
                                 facecolor=colors[self.region_types[location]],
                                 alpha=(visited_reward_transparency

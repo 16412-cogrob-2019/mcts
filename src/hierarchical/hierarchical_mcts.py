@@ -1,6 +1,6 @@
 import math
 import random
-from hierarchical_state import AbstractState, AbstractAction
+from hierarchical_state_naive import AbstractState, AbstractAction
 
 
 class Node(object):
@@ -224,16 +224,16 @@ def execute_round(root, max_tree_depth=15,
     simulation_node = tree_expand_policy(
         cur) if max_tree_depth > cur.depth else cur
 
-    if meta_action and random.random() < 0.5: # tunable parameter adjusts meta policy following rate
-        reward = clone_rollout_policy(simulation_node.state, meta_action, meta_action_root, depth_cur)
-    else:
-        reward = rollout_policy(simulation_node.state)
+    #if meta_action:# and random.random() < 0.5: # tunable parameter adjusts meta policy following rate
+    #    reward = clone_rollout_policy(simulation_node.state, meta_action, meta_action_root, depth_cur)
+    #else:
+    reward = rollout_policy(simulation_node.state)
 
     backpropagate_method(simulation_node, reward)
 
 
 class MonteCarloSearchTree:
-    def __init__(self, initial_state, samples=1000, max_tree_depth=20,
+    def __init__(self, initial_state, samples=1000, max_tree_depth=1000,
                  tree_select_policy=select, tree_expand_policy=expand,
                  rollout_policy=random_rollout_policy,
                  backpropagate_method=backpropagate, meta_action=None, meta_action_root=None):
@@ -334,13 +334,13 @@ class MonteCarloSearchTree:
             new_root = self._root.children[action]
         else:
             new_root = self._root.add_child(action)
-        self._root.remove_child(new_root) # remove ?????
+        #self._root.remove_child(new_root) # remove ?????
         self._root = new_root
         self._depth_cur += 1
         return self
 
-    def get_top_root(self):
+    def revert_top_root(self):
         toproot = self._root
-        while toproot.parent:
-            toproot = toproot.parent
+        while self._root.parent:
+            self._root = self._root.parent
         return toproot

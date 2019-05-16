@@ -1,6 +1,7 @@
 # MCTS for Kolumbo Volcano Exploration
 The repo, except having the base MCTS algorithm and Kolumbo exploration problem model, has several extensions - 
-a neural network extension to rollout policy, a hierarchical model which includes the mothership in the problem, and a ROS integration interface. 
+a neural network extension to rollout policy, a hierarchical model which includes the mothership in the problem, decentralized MCTS that considers intermittent communication, and a ROS integration interface. 
+
 
 ## The Base MCTS
 The base algorithm and model are in the `master` branch.
@@ -15,6 +16,7 @@ Execute `src/discrete/maze.example.py` to run examples of solving the problem us
 
 We have a more realistic continuous-time model, where locations are modeled as nodes on a graph and the cost of going from a location to another becomes the weight of the associated edges. Run `src/example.py` in the `master` branch to solve an example problem using MCTS.
 
+
 ## Neural Network Rollout
 This extension is in the `master` branch.
 
@@ -26,17 +28,24 @@ We have a trained neural network with its data in `src/heuristics/neural_net.db`
 In `src/heuristics/compare.py`, we compare the results between the rollout policies. Note: running the script may take very long. Reduce the number of samples if needed.
 
 
-## Hierachical Model
+## Hierarchical Model
 This extension is in the `master` branch.
 
-Using a modified version of the base model (`src/hierachical/hierarchical_state.py`) and the base MCTS algorithm (`src/hierachical/hierarchical_mcts.py`), a hierachical model is built which considers a mothership and a tethered AUV. The set of primitive actions in this environment includes the AUV motions from the base model, as well as the motions of the mothership between search regions. The macro-actions in our model represent the deployment of the AUV from the mothership using different rollout policies. 
+Using a modified version of the base model (`src/hierarchical/hierarchical_state.py`) and the base MCTS algorithm (`src/hierarchical/hierarchical_mcts.py`), a hierarchical model is built which considers a mothership and a tethered AUV. The set of primitive actions in this environment includes the AUV motions from the base model, as well as the motions of the mothership between search regions. The macro-actions in our model represent the deployment of the AUV from the mothership using different rollout policies. 
 
-Execute `src/hierachical/hierarchical_example.py` for a demonstration of a mothership and tethered AUV planning their actions while exploiting the problem's hierarchical structure. You will see two examples of tethered AUV deployments, which depict the primitive actions that compose a single macro-action. Then, you will see an example of the mothership's motion between regions, which depicts a sequence of macro-actions.
+Execute `src/hierarchical/hierarchical_example.py` for a demonstration of a mothership and tethered AUV planning their actions while exploiting the problem's hierarchical structure. You will see two examples of tethered AUV deployments, which depict the primitive actions that compose a single macro-action. Then, you will see an example of the mothership's motion between regions, which depicts a sequence of macro-actions.
+
+
+## Decentralized MCTS 
+This extension is in the `master` branch.
+
+Using a modified version of the base model (`src/decentralized/maze.py`) and the base MCTS algorithm (`src/decentralized/mcts.py`), a decentralized model is built that considers two agents that are intermittently communicate with each other while performing MCTS. You can execute the `src/decentralized/dec_demo.py` file to observe a working example of the decentralized MCTS scenario in a simple environment that requires proper collaboration in order to retrieve the optimal amount of reward. 
+
 
 ## ROS Integration
 To view the ROS integration code, switch to the `mcts_ros_integration_v2` branch.
 
-Code for ROS integration is in `src`. `src/mcts_node.py` provides the main function. `test_pub.py` takes some hardcoded data (dictionary of lists), uses json dumps to make it a string, and publishes that string at 10 hertz. skeleton _code.py subscribes to that topic, uses json loads to convert it back to a dictonary, and prints it out. 
+Code for ROS integration is in `src`. `src/mcts_node.py` provides the main function. `test_pub.py` takes some hardcoded data (dictionary of lists), uses json dumps to make it a string, and publishes that string at 10 hertz. skeleton_code.py subscribes to that topic, uses json loads to convert it back to a dictionary, and prints it out. 
 
 To run...
 
